@@ -34,9 +34,15 @@ void statRange(char *content, int len){
 	for (int i=0;i<128;i++) fprintf(dict,"%d\n",count[i]);
 	//for (int i=0;i<128;i++) if (count[i]) cout<<i<<' '<<count[i]<<'\n';
 	fclose(dict);
+	
+	double entropy=0;
+	for (int i=0;i<128;i++) if(count[i]) entropy-=log2((double)count[i]/len)*count[i]/len;
+		
 	for (int i=0;i<128;i++) count[i+1]+=count[i];
 	for (int i=0;i<128;i++) range[i+1]=(double)count[i]/count[127];
 	for (int i=0;i<128;i++) cout<<range[i]<<'\n';
+	cout<<"Source lenth: "<<len<<" byte"<<endl;
+	cout<<"Shannon entropy:"<<entropy/8*len<<" byte"<<endl;
 }
 
 typedef unsigned long long uint;
@@ -56,6 +62,7 @@ void encode(){
     uint L = 0, R = 1ull << P;
     byte buf = -1, c = 0, z = 0; bool first=1;
     ofstream out(filename+".bin", ios::binary);
+	int clen=1;
 	
 	for (int i=0;i<len;i++){
 		int ch=content[i];
@@ -73,12 +80,12 @@ void encode(){
 	    while(R < (1 << (P - 8))){
 			temp = L >> (P - 8);
 			if (temp < 0xff){
-				if (!first) out.put(buf);   //output previous 
+				if (!first) out.put(buf),clen++;   //output previous 
 				for (;c > 0;c--)   // output 0xff or 0x00
 					if(z == 1)
-						out.put(0);
+						out.put(0),clen++;
 					else
-						out.put(0xff);
+						out.put(0xff),clen++;
 				buf = temp; // current buffer
 				first=0;
 			}
@@ -90,6 +97,7 @@ void encode(){
     	}
 	}
 	//out.put(L >> (P - 8)); //last
+	cout<<"Arithmetic encoding lenth: "<<clen+1<<" byte"<<endl;
 	delete[] content;
 	cout<<"Encode done in "<<filename+".bin"<<endl;
 }
