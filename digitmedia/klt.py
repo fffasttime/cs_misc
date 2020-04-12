@@ -1,30 +1,31 @@
 # Karhunen-Loève Transform
-
+# Same as pca, this code is a demo on dataset 'ColorHistogram.asc'
 import numpy as np
 
 data = np.loadtxt('ColorHistogram.asc', dtype=np.float64)
 data = data[:,1:]
 
-data = data.T
+means = np.mean(data, axis = 0)
+data -= means
 
-data = data - np.mean(data, axis = 0)
+data = data.T
+print(means.shape)
 
 print(data.shape)
 
-C = (data @ data.T) / data.shape[0]
+C = (data @ data.T) / data.shape[1]
 
 eig, P = np.linalg.eig(C)
 print("eig = ", eig)
 print("P = ", P)
 
-print("select first 10 eig: ", eig[:10])
+P1 = P.T[:16, :]
+print("select first 16 eig: ", eig[:16])
+#print(P.T @ C @ P)
+#print(P1 @ C @ P1.T)
 
-P1 = P[:,:10]
-
-print(P.T @ C @ P)
-print(P1.T @ C @ P1)
+# compress and rebuild
+data1 = P1.T @ (P1 @ data)
 
 print("original data[0] vector: ", data[0])
-print("rebuild  data[0] vector: ", (P1.T@data)[0])
-
-print((P1.T@data).shape)
+print("rebuild  data[0] vector: ", data1[0])
