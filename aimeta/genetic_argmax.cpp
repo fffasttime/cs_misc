@@ -14,7 +14,7 @@ const db PI = acos(-1);
 const int N = 50; //population size 
 const int GENE_LEN = 33, GENE_FIRST_PART = 18, GENE_SECOND_PART = GENE_LEN - GENE_FIRST_PART;
 const db P_C = 0.6; //cross prob
-const db P_M = 0.02; //mutation prob
+const db P_M = 0.1; //mutation prob
 
 // accurate result: x* =11.6255, y* =5.7250, f(x*, y*)=38.8503
 // it's a positive function, so can be used as fitness function directly 
