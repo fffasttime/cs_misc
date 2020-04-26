@@ -24,15 +24,16 @@ tend: end temprature
 delta: temprature reduce factor
 */
 double rand01() {return (rand()+0.5)/RAND_MAX;}
-Point ans; double anse=1e12;
+Point ans; double anse;
 void argmin_SimulateAnneal(double t0=50, double tend=1e-5, double delta=0.999){
 	Point p((Point){5,5});
+	anse=1e12;
 	double t=t0, ne=E(p); //current state energy
 	while (t>=tend){
 		Point p1((Point){p.x+(rand01()*t-t/2), p.y+(rand01()*t-t/2)});
-		double te=E(p1);
+		double te=E(p1), K=1;
 		//cout<<te-ne<<' '<<ne<<' '<<t<<' '<<exp((ne-te)/t)<<' '<<ans.x<<'\n';
-		if (te<ne || 0 && exp((ne-te)/t)>rand01()) //disabled jumpout
+		if (te<ne || 0 && exp((ne-te)/t*K)>rand01()) //disabled jumpout
 			p=p1, ne=te; //update
 		if (ne<anse) ans=p, anse=ne; 
 		//cout<<ans.x<<' '<<ans.y<<' '<<anse<<'\n';
@@ -40,7 +41,12 @@ void argmin_SimulateAnneal(double t0=50, double tend=1e-5, double delta=0.999){
 	}
 }
 int main(){
+	int CT=500, auc=0;
 	srand(1);
-	argmin_SimulateAnneal();
-	printf("(%f %f): %f",ans.x,ans.y,-anse);
+	for (int T=0;T<CT;T++){
+		argmin_SimulateAnneal();
+		if (-anse>38.85) auc++;
+		//printf("(%f %f): %f",ans.x,ans.y,-anse);
+	}
+	printf("|%.2fms|%.2f%% (%d/%d)|\n",clock()*1.0/CT, auc*100.0/CT, auc, CT);
 }

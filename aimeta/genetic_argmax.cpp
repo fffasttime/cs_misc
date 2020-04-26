@@ -12,6 +12,7 @@ typedef double db;
 
 const db PI = acos(-1);
 const int N = 50; //population size 
+const int E=2; //number of new_gr alive
 const int GENE_LEN = 33, GENE_FIRST_PART = 18, GENE_SECOND_PART = GENE_LEN - GENE_FIRST_PART;
 const db P_C = 0.6; //cross prob
 const db P_M = 0.1; //mutation prob
@@ -43,16 +44,14 @@ struct Gene{
 	}
 	db fitness() const{
 		auto p=decode();
-		if (p.first<XMIN || p.first>XMAX){
-			printf("%f\n",p.first);
-			cout<<bitset<35>(code);
-		}
+		//if (p.first<XMIN || p.first>XMAX){printf("%f\n",p.first);cout<<bitset<35>(code);}
 		return target(p.first, p.second);
 	}
 };
 vector<Gene> gene;
 
 void init(){
+	gene.clear();
 	uniform_int_distribution<ll> dis(0,(1ll<<GENE_LEN)-1); //close section
 	for (int i=0;i<N;i++) gene.emplace_back(dis(rand_gen));
 }
@@ -73,8 +72,10 @@ void iter(){
 			ll c2=gene[cross_pool[i+1]].code;
 			uniform_int_distribution<> dis(0,GENE_LEN-1);
 			int l=dis(rand_gen), r=dis(rand_gen);
-			if (l>r) swap(l,r);
+			bool ff=0;
+			if (l>r) swap(l,r),ff=1;
 			ll bitmask=((1ull<<r)-1)>>l<<l; //section [l,r)
+			//if (ff) bitmask^=(1ll<<GENE_LEN)-1;
 			new_gr.emplace_back(c1&bitmask | c2&~bitmask);
 			new_gr.emplace_back(c2&bitmask | c1&~bitmask);
 		}
@@ -90,9 +91,9 @@ void iter(){
 			new_gr.emplace_back(c1);
 	}
 	vector<Gene> next_gr;
-	const int E=2; //number of new_gr alive
 	if (new_gr.size()<E) new_gr.push_back(gene[0]);
 	if (new_gr.size()<E) new_gr.push_back(gene[1]);
+	//for (int i=0;i<N;i++) new_gr.push_back(gene[i]);
 	partial_sort(begin(new_gr),begin(new_gr)+E,end(new_gr),
 		[](const Gene&x, const Gene&y){return x.fitness()>y.fitness();});
 	for (int i=0;i<N;i++)
@@ -113,13 +114,18 @@ void debug(int iter){
 }
 
 int main(){
-	init();
-	const int ITER=500;
-		debug(0);
-	for (int i=1;i<=ITER;i++){
-		iter();
-		debug(i);
+	int CT=500, auc=0;
+	for (int T=0;T<CT;T++){
+		init();
+		const int ITER=500;
+			//debug(0);
+		for (int i=1;i<=ITER;i++){
+			iter();
+			//debug(i);
+		}
+		if (gene[0].fitness()>38.85) auc++;
 	}
+	printf("|%.2fms|%.2f%% (%d/%d)|\n",clock()*1.0/CT, auc*100.0/CT, auc, CT);
 	return 0;
 }
 

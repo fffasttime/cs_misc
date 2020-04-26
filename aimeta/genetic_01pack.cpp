@@ -64,6 +64,7 @@ struct Gene{
 vector<Gene> gene;
 
 void init(){
+	gene.clear();
 	uniform_int_distribution<ll> dis(0,(1ll<<GENE_LEN)-1); //close section
 	for (int i=0;i<POP_SIZE;i++) gene.emplace_back(dis(rand_gen));
 	
@@ -132,13 +133,18 @@ void debug(int iter){
 }
 
 int main(){
-	init();
-	const int ITER=500;
-		debug(0);
-	for (int i=1;i<=ITER;i++){
-		iter();
-		debug(i);
+	int CT=100, auc=0;
+	for (int T=0;T<CT;T++){
+		init();
+		const int ITER=500;
+			//debug(0);
+		for (int i=1;i<=ITER;i++){
+			iter();
+			//debug(i);
+		}
+		if (gene[0].fitness==3103) auc++;
 	}
+	printf("|%.2fms|%.2f%% (%d/%d)|\n",clock()*1.0/CT, auc*100.0/CT, auc, CT);
 	return 0;
 }
 

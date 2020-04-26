@@ -30,8 +30,9 @@ db f(Point p){
 //update formula: p(k+1)=w*p(k) + c1 * pbest + c2 * gbest
 const db WBEGIN=0.9, WEND=0.4, C1=1, C2=1;
 const int ITER=500;
-
 const int POP_SIZE=50;
+
+struct PSO{
 struct P{
 	Point p, pbest, v;
 	db fitness;
@@ -52,10 +53,10 @@ struct P{
 		fitness=f(p);
 	}
 }g[POP_SIZE];
-
+Point getgbest(){return max_element(g,g+POP_SIZE,[](const P& a, const P &b){return a.fitness<b.fitness;})->pbest;}
 void update(int iter){
 	db w = WBEGIN + (WEND - WBEGIN) * (1.0*iter/ITER); //linear
-	Point gbest = max_element(g,g+POP_SIZE,[](const P& a, const P &b){return a.fitness<b.fitness;})->pbest;
+	Point gbest = getgbest();
 	for (int i=0;i<POP_SIZE;i++){
 		g[i].upd(w, gbest);
 	}
@@ -68,13 +69,20 @@ void debug(int iter){
 		printf("(%.5f, %.5f), %.5f\n", g[i].p.x, g[i].p.y, g[i].fitness);
 	}
 }
+};
 
 int main(){
-	debug(0);
-	for (int i=1;i<=ITER;i++){
-		update(i);
-		debug(i);
+	int CT=500, auc=0;
+	for (int T=0;T<CT;T++){
+		PSO pso;
+		//pso.debug(0);
+		for (int i=1;i<=ITER;i++){
+			pso.update(i);
+			//pso.debug(i);
+		}
+		if (f(pso.getgbest())>38.85) auc++;
 	}
+	printf("|%.2fms|%.2f%% (%d/%d)|\n",clock()*1.0/CT, auc*100.0/CT, auc, CT);
 	return 0;
 }
 
