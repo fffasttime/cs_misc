@@ -11,8 +11,8 @@ plt.ylim((YMIN,YMAX))
 X=np.linspace(XMIN, XMAX,100)
 Y=np.linspace(YMIN, YMAX,100)
 X,Y=np.meshgrid(X,Y)
-Z=21.5 + X*np.sin(4*math.pi*X) + Y*np.sin(20*math.pi*Y)
-
+f=lambda x,y:21.5 + x*np.sin(4*math.pi*x) + y*np.sin(20*math.pi*y)
+Z=f(X,Y)
 
 plt.contourf(X,Y,Z)
 plt.colorbar()
@@ -32,7 +32,7 @@ for i in range(s.shape[0]):
 clust=np.array(clust)
 plt.scatter(clust[:,0],clust[:,1], np.array(clustc), marker='x');
 for i in range(clust.shape[0]):
-    plt.annotate('%.2f,%.2f\n\n%d'%(clust[i,0],clust[i,1],clustc[i]), \
-        xy=(clust[i,0],clust[i,1]),xytext = (0, 16), textcoords = 'offset points',ha = 'center', va = 'top')
+    plt.annotate('%.2f,%.2f\n%.4f\n\n%d'%(clust[i,0],clust[i,1], f(clust[i,0],clust[i,1]) ,clustc[i]), \
+        xy=(clust[i,0],clust[i,1]),xytext = (0, 28), textcoords = 'offset points',ha = 'center', va = 'top')
 
 plt.show()

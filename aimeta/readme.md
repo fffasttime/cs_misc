@@ -25,17 +25,17 @@
 ||ITER=1000 N=100 E=2 PC=0.6 PM=0.1|312.57ms|73.00% (73/100)|
 
 # Result distribution analyze
-![](argmax_genetic_sample.png)  
+![image: genetic_sample](argmax_genetic_sample.png)  
 task=argmax algo=genetic  ITER=250 N=10 E=2 PC=0.6 PM=0.1  
 speed = 8.34ms  accuracy=6.00% (30/500)
 
-![](argmax_SA_sample.png)  
+![image: SA_sample](argmax_SA_sample.png)  
 task=argmax algo=SA  delta=0.998  
 speed = 2.52ms  accuracy=24.00% (120/500)
 
-![target function](argmax_func_full.png)  
+![image: target function](argmax_func_full.png)  
 Full target function
 
-![algo=SA delta=0.998](argmax_func_distribution.png)  
+![image: algo=SA delta=0.998](argmax_func_distribution.png)  
 algo=SA delta=0.998  
 Result distribution
