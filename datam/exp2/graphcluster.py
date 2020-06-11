@@ -1,4 +1,5 @@
 import numpy as np
+from matplotlib import pyplot as plt
 
 class Graph:
     def __init__(self):
@@ -38,33 +39,40 @@ class Graph:
                 for y in s:
                     if x!=y:
                         sum+=self.g[x,y]-self.deg[x]*self.deg[y]/2/self.m
-        return sum/self.m
+        return sum/2/self.m
 
     def modinc(self, g1, g2):
         sum=0.0
         for x in g1:
             for y in g2:
                 sum+=self.g[x,y]-self.deg[x]*self.deg[y]/2/self.m
-        return sum/2/self.m
+        return sum/self.m
 
 def run():
     g=Graph()
     g.load('karate.gml')
     groups=[[i+1] for i in range(g.nodec)]
+    modulates=[]
+    
     for step in range(g.nodec-1):
-        res=(0, 0, 0)
+        res=(-100, 0, 0)
         for i in range(len(groups)):
             for j in range(i+1,len(groups)):
                 inc=g.modinc(groups[i],groups[j])
                 if inc>res[0]:
                     res=(inc,i,j)
         print(res)
-        if res[0]<=0:
-            break
         groups[res[1]]+=groups[res[2]]
         groups.pop(res[2])
         print(g.modulate(groups))
-    print(groups)
+        modulates.append(g.modulate(groups))
+        print(groups)
+        print()
+
+    plt.plot(modulates)
+    plt.xlabel('Step')
+    plt.ylabel('Modularity')
+    plt.show()
 
 if __name__=="__main__":
     run()

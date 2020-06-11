@@ -11,6 +11,26 @@ using namespace std;
 typedef unsigned long long ll;
 const int N=435, M=34;
 
+string AttrName[]={
+"democrat",
+"handicapped-infants",
+"water-project-cost-sharing",
+"adoption-of-the-budget-resolution",
+"physician-fee-freeze",
+"el-salvador-aid",
+"religious-groups-in-schools",
+"anti-satellite-test-ban",
+"aid-to-nicaraguan-contras",
+"mx-missile",
+"immigration",
+"synfuels-corporation-cutback",
+"education-spending",
+"superfund-right-to-su",
+"crime",
+"duty-free-exports",
+"export-administration-act-south-africa"
+};
+
 ll data[N];
 
 map<ll, int> fset;
@@ -40,6 +60,14 @@ void dfs(ll f, ll u){
 	for (int i=0;i<M;i++)
 		if ((~u>>i&1) && (f>>i&1))
 			dfs(f,u|1ull<<i);
+}
+
+void prtattr(ll x){
+	for (int i=0;i<M/2;i++)
+		if (x>>(i*2)&1)
+			cout<<AttrName[i]<<":y ";
+		else if (x>>(i*2+1)&1)
+			cout<<AttrName[i]<<":n ";
 }
 
 int count(ll x){
@@ -95,6 +123,10 @@ int main(){
 		cout<<"->";
 		prt(p.first);
 		cout<<" "<<(double)fset[p.first]/fset[p.second]<<'\n';
+		prtattr(p.second);
+		cout<<"=>\n";
+		prtattr(p.first);
+		cout<<"lift:"<<lift(p.first, p.second, p.first^p.second)<<"\n\n";
 	}
 	return 0;
 }
