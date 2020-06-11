@@ -8,6 +8,7 @@ for approximate nearest neighbors search problem
 #include <map>
 #include <algorithm>
 #include <ctime>
+#include <random>
 #include "dataload.hpp"
 using namespace std;
 
@@ -26,11 +27,12 @@ const int Round=5,Bit=12;
 	
 struct Hash{
 	multimap<int,int> h;
-	vector<DataVec> dir;
+	vector<DataVec> dir; //direction vector
 	int gethash(const DataVec &d){
 		int id=0;
 		for (int j=0;j<Bit;j++){
 			db x=dot(dir[j], d);
+			//TODO: add constant item b
 			id<<=1;
 			id|=x>0;
 		}
@@ -62,6 +64,7 @@ int main()
 	
 	int acc=0,mcc=0;
 	//test
+	int nearsum=0;
 	for (int i=0;i<cN;i++){
 		set<int> nears;
 		for (int j=0;j<Round;j++){
@@ -70,7 +73,8 @@ int main()
 		}
 		vector<pair<db,int>> near;
 		for (auto v: nears) near.emplace_back(L2(data[i],data[v]),v);
-		//cout<<near.size()<<' ';
+		check(nears.size()>10, "near set too small!");
+		nearsum+=near.size();
 		partial_sort(begin(near),begin(near)+11,end(near));
 		
 		bool matched=1;
@@ -81,7 +85,7 @@ int main()
 		}
 		acc+=matched;
 	}
-	
+	cout<<"average hash near set:"<<(db)nearsum/cN<<'\n';
 	FILE *res=fopen("result.md","a");
 	fprintf(res,"|r=%2d|len=%3d|acc=%5.2f%%|recall=%5.2f%%|%4ld ms|%5ld ms|\n",
 		Round, Bit, (db)acc/cN*100, (db)mcc/cN*10, t1-t0, clock()-t1);
