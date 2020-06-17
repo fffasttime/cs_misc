@@ -4,10 +4,14 @@
 #include <stdarg.h>
 #include <string.h>
 #include "y.tab.h"
-
 %}
 
 %option caseless
+%option c++
+
+string [\'][A-Za-z][A-Za-z0-9_]*[\']
+id [A-Za-z][A-Za-z0-9_]*
+number [0-9]+
 
 %%
 
@@ -30,16 +34,13 @@ where  {return WHERE;}
 [!] |
 [>] |
 [<] |
-[<=] |
-[>=] |
-[<>]   {return *yytext;}
+"<=" |
+">=" |
+"<>"   {return *yytext;}
  
- /*id*/
-[A-Za-z][A-Za-z0-9_]*   {yylval.strval=strdup(yytext); return ID;}
- /*str*/
-[\'][A-Za-z][A-Za-z0-9_]*[\']  {yylval.strval=strdup(yytext); return STRING;}
- /*num*/
-[0-9]+  {yylval.intval=atoi(yytext); return NUMBER;}
+{id}  {yylval.strval=strdup(yytext); return ID;}
+{string}  {yylval.strval=strdup(yytext); return STRING;}
+{number} {yylval.intval=atoi(yytext); return NUMBER;}
 \n     {return *yytext;}
 [ \t]+
 
