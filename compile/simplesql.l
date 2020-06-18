@@ -22,6 +22,8 @@ delete {return DELETE;}
 drop   {return DROP;}
 exit   {return EXIT;}
 from   {return FROM;}
+int	   {return INT;}
+char   {return CHAR;}
 select {return SELECT;}
 table  {return TABLE;}
 where  {return WHERE;}
@@ -33,7 +35,7 @@ where  {return WHERE;}
 [*] |
 [=] |
 [!] |
-[>] |
+[>] | 
 [<] |
 "<=" |
 ">=" |
@@ -44,5 +46,8 @@ where  {return WHERE;}
 {number} {yylval.intval=atoi(yytext); return NUMBER;}
 \n     {return *yytext;}
 [ \t]+
+
+ /*bad character*/
+. {fprintf(stderr, "lex error, unexpected charactor '%s'\n", yytext);}
 
 %%

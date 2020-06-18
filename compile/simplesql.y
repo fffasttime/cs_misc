@@ -2,19 +2,19 @@
 
 #include "simplesql.h"
 
-#define HINTCMD printf("SQL>")
+#define HINTCMD printf("SQL> ")
 
 int yylex();
 int yyparse();
 void yyerror(const char *str){
-	printf("Error %s\n",str);
+	fprintf(stderr, "%s\n", str);
 }
 extern "C" int yywrap(){
 	return 1;
 }
 
 int main(int argc, char **argv){
-	printf("SQL>");	
+	HINTCMD;
 	yyparse();
 	return 0;
 }
@@ -29,7 +29,9 @@ int main(int argc, char **argv){
 	item_def *itemval;
 	table_def *tbval;
 }
-%start program
+
+%error-verbose
+
 %token AND CREATE DELETE DROP EXIT FROM SELECT TABLE WHERE
 %token <intval> NUMBER
 %token <strval> STRING ID INT CHAR
@@ -46,43 +48,44 @@ int main(int argc, char **argv){
 
 %%
 
-statements: statements statement | statement
-statement: createsql | selectsql | exitsql
+statements: statements statementline | statementline
+statementline: statement ';' 
+			| statement '\n' {HINTCMD;} 
+			| error '\n' { /*error recovery*/
+				yyerrok;
+				HINTCMD;
+			}
 
-selectsql: SELECT '*' FROM tables ';' '\n'{
-		puts("");
+statement: createsql | selectsql | exitsql | %empty
+
+selectsql: SELECT '*' FROM tables {
 		selection(nullptr, $4, nullptr);
-		puts(""); HINTCMD;
-	}
-	| SELECT item_list FROM tables ';' '\n' {
 		puts("");
+	}
+	| SELECT item_list FROM tables {
 		selection($2, $4, nullptr);
-		puts(""); HINTCMD;	
-	}
-	| SELECT '*' FROM tables WHERE conditions ';' '\n' {
 		puts("");
+	}
+	| SELECT '*' FROM tables WHERE conditions {
 		selection(nullptr, $4, $6);
-		puts(""); HINTCMD;
-	}
-	| SELECT item_list FROM tables WHERE conditions ';' '\n' {
 		puts("");
+	}
+	| SELECT item_list FROM tables WHERE conditions {
 		selection($2, $4, $6);
-		puts(""); HINTCMD;
+		puts("");
 	}
 
-createsql: CREATE TABLE ID '(' create_items ')' ';' '\n' {
-		puts("");
-		createTable($3, $5);
-		puts(""); HINTCMD;
-	}
-	/*todo: create database*/
 
-exitsql: EXIT ';' {
-		puts("");
+exitsql: EXIT {
 		printf("Successfully exited\n");
 		exit(0);
 	}
 
+createsql: CREATE TABLE ID '(' create_items ')' {
+		createTable($3, $5);
+		puts("");
+	}
+	/*todo: create database*/
 create_item: ID INT{
 		$$=(create_items_def *)malloc(sizeof(create_items_def));
 		$$->field=$1;
