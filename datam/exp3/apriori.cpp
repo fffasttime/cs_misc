@@ -1,3 +1,9 @@
+/*
+Author: fffasttime
+Date: 2020/06/12
+Description: Assiociation rules discovery on US house voting dataset, using Apriori algorithm 
+*/
+
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -118,6 +124,7 @@ int main(){
 	}
 	sort(begin(rules),end(rules));
 	rules.erase(unique(begin(rules),end(rules)),end(rules));
+	cout<<fset.size()<<" frequent items\n"<<"Found "<<rules.size()<<" rules"<<"\n";
 	for (auto p:rules){
 		prt(p.second);
 		cout<<"->";

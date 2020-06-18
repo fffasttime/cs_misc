@@ -1,3 +1,9 @@
+# author: fffasttime
+# date: 2020/06/02
+# description: 
+#   a community detection problem,using hierarchical clustering, 
+#    it's a greedy algorithm by maximizing modulate value 
+
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -54,7 +60,7 @@ def run():
     groups=[[i+1] for i in range(g.nodec)]
     modulates=[]
     
-    for step in range(g.nodec-1):
+    for step in range(g.nodec-1): # merge
         res=(-100, 0, 0)
         for i in range(len(groups)):
             for j in range(i+1,len(groups)):
