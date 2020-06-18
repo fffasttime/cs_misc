@@ -4,6 +4,21 @@
 
 #define HINTCMD printf("SQL>")
 
+int yylex();
+int yyparse();
+void yyerror(const char *str){
+	printf("Error %s\n",str);
+}
+extern "C" int yywrap(){
+	return 1;
+}
+
+int main(int argc, char **argv){
+	printf("SQL>");	
+	yyparse();
+	return 0;
+}
+
 %}
 
 %union{
@@ -14,12 +29,12 @@
 	item_def *itemval;
 	table_def *tbval;
 }
-
+%start program
 %token AND CREATE DELETE DROP EXIT FROM SELECT TABLE WHERE
 %token <intval> NUMBER
 %token <strval> STRING ID INT CHAR
 
-/* binding type*/
+/* binding content */
 %type <intval> comparator
 %type <crtitemsval> create_items create_item
 %type <conval> condition conditions
@@ -47,18 +62,18 @@ selectsql: SELECT '*' FROM tables ';' '\n'{
 	| SELECT '*' FROM tables WHERE conditions ';' '\n' {
 		puts("");
 		selection(nullptr, $4, $6);
-		puts("") HINTCMD;
+		puts(""); HINTCMD;
 	}
 	| SELECT item_list FROM tables WHERE conditions ';' '\n' {
 		puts("");
 		selection($2, $4, $6);
-		puts("") HINTCMD;
+		puts(""); HINTCMD;
 	}
 
 createsql: CREATE TABLE ID '(' create_items ')' ';' '\n' {
 		puts("");
 		createTable($3, $5);
-		puts("") HINTCMD;
+		puts(""); HINTCMD;
 	}
 	/*todo: create database*/
 
@@ -115,21 +130,21 @@ comparator:		  '='     {$$ = 1;}
 
 condition: item comparator NUMBER {
 		$$ = new conditions_def;
-		$$.type = 0;
-		$$.litem = $1;
-		$$.intv = $3;
-		$$.cmp_op = $2;
-		$$.left = nullptr;
-		$$.right = nullptr;
+		$$->type = 0;
+		$$->litem = $1;
+		$$->intv = $3;
+		$$->cmp_op = $2;
+		$$->left = nullptr;
+		$$->right = nullptr;
 	}
 	| item comparator STRING {
 		$$ = new conditions_def;
-		$$.type = 1;
-		$$.litem = $1;
-		$$.strv = $3;
-		$$.cmp_op = $2;
-		$$.left = nullptr;
-		$$.right = nullptr;
+		$$->type = 1;
+		$$->litem = $1;
+		$$->strv = $3;
+		$$->cmp_op = $2;
+		$$->left = nullptr;
+		$$->right = nullptr;
 	}
 
 conditions: condition { $$ = $1; }

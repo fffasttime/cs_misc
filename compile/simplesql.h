@@ -4,9 +4,16 @@
 #include <stdio.h>
 #include <string.h>
 
-struct create_item_def{
-	char *field;
-	int type;
+struct Table{
+	int x;
+}; //TODO
+
+/*'CREATE TABLE table_id (create_items_def)'*/
+struct create_items_def{ 
+	/*field name*/
+	char *field; 
+	/*0:int | 1:string*/
+	int type;    
 	create_items_def *next;
 };
 
@@ -21,15 +28,26 @@ struct conditions_def /*codition binary tree node type*/
 {
 	/*INT:0  STRING:1*/	
 	int type;  
-	item_def *litem; /*item*/
+	/*item*/
+	item_def *litem; 
 	int intv;		
-	char *strv;		
-	int cmp_op;		/* '=':1 | '>':2 | '<':3 | '>=':4 | '<=':5 | '!=':6 | 'AND':7 | 'OR':8 */
+	char *strv;
+	/* '=':1 | '>':2 | '<':3 | '>=':4 | '<=':5 | '!=':6 | 'AND':7 | 'OR':8 */		
+	int cmp_op;
 	conditions_def *left;
 	conditions_def *right;
-}
+};
 
-void createTable(char *tableval, create_item_def *crtitem_root);
+struct table_def	/*'SELECT * FROM tabel_list WHERE ...'*/
+{
+	/*table_name*/
+	char *table;
+	/*real_table_pos*/
+	Table *pos;
+	table_def *next;
+};
+
+void createTable(char *tableval, create_items_def *crtitem_root);
 void selection(item_def *item_first, table_def *table_first, conditions_def *con_root);
 
 #endif

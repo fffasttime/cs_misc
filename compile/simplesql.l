@@ -3,11 +3,12 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-#include "y.tab.h"
+#include "simplesql.h"
+#include "parser.hh"
 %}
 
 %option caseless
-%option c++
+/*%option c++*/
 
 string [\'][A-Za-z][A-Za-z0-9_]*[\']
 id [A-Za-z][A-Za-z0-9_]*
@@ -45,17 +46,3 @@ where  {return WHERE;}
 [ \t]+
 
 %%
-
-int main(int argc, char **argv){
-	printf("SQL>");	
-	yyparse();
-	return 0;
-}
-
-void yyerror(const char *str){
-	fprintf(stderr, "Error: %s at line %d\n", str, yylineno);
-}
-
-int yywarp(){
-	return 1;
-}
