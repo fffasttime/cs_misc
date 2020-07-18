@@ -14,6 +14,7 @@ extern "C" int yywrap(){
 }
 
 int main(int argc, char **argv){
+	db_init();
 	HINTCMD;
 	yyparse();
 	return 0;

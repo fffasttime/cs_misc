@@ -7,7 +7,7 @@ We need an ADT support inserting and deleting operation on records. Specifically
 Data strcuture like B-tree is appropate.  
 To simplify the implemention here, the data table will be fully loaded to memory at work, and save to disk when exit.  
 So a dynamtic array (c++ std::vector) is enough.  
-## table storage structure
+## table storage structure  
 Before every data table(inculde metadata), a tid number indicates which table follow.  
 tid is unique, and database metadata always have tid=0.  
 The length and type of each field is loaded in metadata before, so the full length is known(dbmetadata.items*tbmetadta.fieldlength)  
@@ -21,13 +21,13 @@ Metadata table always get full loaded in memory.
 ## database metadata  
 Each database have one table, always occupy the head of .db file.  
 First 64 Byte is metadata of full database  
-|DB_identify|version|other infomathon(reserved)|   
+|DB_identification("SIMPLEDB") 10 byte | version 10 byte | other infomathon(reserved)|   
 Then a table lists ordinary tables in this database    
 {'meta_tid':int, 'tid':int, 'table_name':char(32), 'offset':__pointer, 'items':int}  
 ## table matadata  
 Then every table have a table save its field info  
 {'fid':int, 'field_type':char(16), (TODO)'foreign_key'}  
 
-# test & debug
-testcase.cc make tests implement of db.  
+# test & debug  
+testcase.cc tests implement of db.  
 sql interpreter should be tested by examples.  

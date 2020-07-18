@@ -1,4 +1,9 @@
 #include "simplesql.h"
+#incldue <io.h> //file system
+
+void db_init(){
+    
+}
 
 void createTable(char *tableval, create_items_def *crtitem_root){
     printf("trying create %s\n", tableval);

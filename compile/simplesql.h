@@ -1,19 +1,21 @@
+/**
+ * This header file defines some data structue used for sql parser
+*/
+
 #ifndef SIMPLESQL_H
 #define SIMPLESQL_H
 
 #include <stdio.h>
 #include <string.h>
+#include "util.h"
 
-struct Table{
-	int x;
-}; //TODO
+void db_init();
 
 /*'CREATE TABLE table_id (create_items_def)'*/
 struct create_items_def{ 
 	/*field name*/
 	char *field; 
-	/*0:int | 1:string*/
-	int type;    
+	FieldType type;    
 	create_items_def *next;
 };
 
