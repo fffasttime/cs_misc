@@ -10,4 +10,4 @@ parser.o : simplesql.y
 	bison -d -o parser.cc simplesql.y
 	g++ -c parser.cc -std=c++11
 clean : 
-	rm lexer.* parser.* simplesql *.o
+	rm -f lexer.* parser.* simplesql *.o
