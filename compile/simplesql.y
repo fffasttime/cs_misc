@@ -2,8 +2,6 @@
 
 #include "simplesql.h"
 
-#define HINTCMD printf("SQL> ")
-
 int yylex();
 int yyparse();
 void yyerror(const char *str){
@@ -15,7 +13,7 @@ extern "C" int yywrap(){
 
 int main(int argc, char **argv){
 	db_init();
-	HINTCMD;
+	hintCMD();
 	yyparse();
 	return 0;
 }
@@ -51,10 +49,10 @@ int main(int argc, char **argv){
 
 statements: statements statementline | statementline
 statementline: statement ';' 
-			| statement '\n' {HINTCMD;} 
+			| statement '\n' {hintCMD();} 
 			| error '\n' { /*error recovery*/
 				yyerrok;
-				HINTCMD;
+				hintCMD();
 			}
 
 statement: createsql | selectsql | exitsql | %empty

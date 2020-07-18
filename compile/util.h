@@ -5,6 +5,7 @@
 using std::string;
 
 [[noreturn]] fatal(char *fmt, ...);
+int printf_debug(char *fmt, ...);
 int printf_info(char *fmt, ...);
 int printf_error(char *fmt, ...);
 

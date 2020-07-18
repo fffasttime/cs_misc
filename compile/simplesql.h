@@ -8,7 +8,10 @@
 #include <stdio.h>
 #include <string.h>
 #include "util.h"
+#include <vector>
+using std::vector;
 
+vector<string> list_dir(string path);
 void db_init();
 
 /*'CREATE TABLE table_id (create_items_def)'*/

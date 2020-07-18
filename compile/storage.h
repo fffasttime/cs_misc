@@ -7,23 +7,36 @@
 
 #include "util.h"
 #include <stdio.h>
+#include <vector>
+#include <map>
+using std::vector;
+using std::map;
+
+struct FieldReturn_t{
+    void *p;
+    int int32(){return *(int *)p;}
+    char *nchar(){return *(char *)p;}
+}
+
+struct FieldCellInfo{
+    FieldType type;
+    int extra; //some type have extra info
+    string name;
+    int length(){
+        switch (type){
+        case FieldType::int32:
+            return 4;
+        case FieldType::nchar:
+            return extra;
+        default:
+            fatal("Fatal: error loading field type\n");
+        }
+    }
+    FieldCellInfo(FieldType ft, string name):type(ft),name(name){}
+    FieldCellInfo(FieldType ft, int extra, string name):type(ft),extra(extra),name(name){}
+};
 
 struct FieldInfo{
-    struct FieldCellInfo{
-        FieldType type;
-        int extra; //some type have extra info
-        string name;
-        int length(){
-            switch (type){
-            case FieldType::int32:
-                return 4;
-            case FieldType::nchar:
-                return extra;
-            default:
-                fatal("Fatal: error loading field type");
-            }
-        }
-    };
     vector<int> offset; //for faster calcuate pos
     map<string, int> name2fid; //find by name
     vector<FieldCellInfo> fields;
@@ -39,32 +52,49 @@ struct FieldInfo{
     }
 }
 
-typedef void* PRecord;
+typedef char* PRecord_t;
 
 class Table{
-private:
+public:
     int tid;
     int item_count;
     bool loaded;
     vector<PRecord> data;
     FieldInfo field;
+    string name;
+    
+    void loadData(FILE *fi, string _name, int _item_count);
+    void saveData(FILE *fo);
+    void freeData();
 
-    void loaddata(FILE *fi);
-    void savedata(FILE *fo);
-    void freedata();
-public:
-    Table(/* args */);
+    FieldReturn_t read(int line, string fieldname){
+        return {data[line]+field.offset[field.name2fid[fieldname]]};
+    }
+    FieldReturn_t readof(int line, int offset){
+        return {data[line]+offset};
+    }
+    int getoffset(string fieldname){
+        return field.offset[field.name2fid[fieldname]];
+    }
+
+    Table(_field):field(_field),loaded(false){}
     ~Table();
 };
 
 class DataBase{
 private:
     string path;
-    string dbname;
+    string name;
+    bool loaded;
+    vector<Table> tables;
+    map<string> name2id()
+private:
+    freeData();
 public:
-    DataBase(string path, string dbname):path(path), dbname(dbname);
+    DataBase():loaded(false){}
     ~DataBase();
-    savedata();
-}
+    loadData(string _path, string _name);
+    saveData();
+};
 
 #endif
