@@ -7,18 +7,10 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "util.h"
 #include <vector>
+#include "common.h"
+#include "storage.h"
 using std::vector;
-
-vector<string> list_dir(string path);
-void db_init();
-
-void createDatabase(char *name);
-void createTable(char *tableval, create_items_def *crtitem_root);
-void selection(item_def *item_first, table_def *table_first, conditions_def *con_root);
-void useDatabase(char *name);
-
 
 /*'CREATE TABLE table_id (create_items_def)'*/
 struct create_items_def{ 
@@ -57,5 +49,17 @@ struct table_def	/*'SELECT * FROM tabel_list WHERE ...'*/
 	Table *pos;
 	table_def *next;
 };
+
+void hintCMD();
+vector<string> listDir(const char *path);
+void initDB();
+
+void createTable(char *tableval, create_items_def *crtitem_root);
+void selection(item_def *item_first, table_def *table_first, conditions_def *con_root);
+
+void createDatabase(char *name);
+void useDatabase(char *name);
+void saveDatabase();
+
 
 #endif

@@ -39,12 +39,12 @@ Table::~Table(){
 bool DataBase::checkDBFile(FILE *fi, int &table_count){
     char predata[64];
     if (fread(predata, 64, 1, fi) < 64){
-        printf_error("error: bad db format of %s\n",path.c_str());
+        printf_error("error: bad db file format, unknown head\n");
         return false;
     }
     // check head
     if (strncmp(predata,"simplesql",9)){
-        printf_error("error: bad db format of %s\n",path.c_str());
+        printf_error("error: bad db file format, maybe another dbms?\n");
         return false;
     }
     // check version
@@ -78,6 +78,11 @@ FieldInfo getTableMetaFieldInfo(){
     return FieldInfo(fields);
 }
 
+DataBase::~DataBase(){
+    if (loaded) 
+        saveData();
+}
+
 void DataBase::freeData(){
     loaded=false;
     tables.clear();
@@ -85,7 +90,7 @@ void DataBase::freeData(){
 }
 
 void DataBase::loadData_tables(FILE *fi, int table_count){
-    tables.emplace_back(getDBMetaFieldInfo);
+    tables.emplace_back(getDBMetaFieldInfo());
     Table &dbmeta=tables[0];
     dbmeta.loadData(fi, "__dbmeta", table_count);
 

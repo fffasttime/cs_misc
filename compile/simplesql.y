@@ -12,7 +12,7 @@ extern "C" int yywrap(){
 }
 
 int main(int argc, char **argv){
-	db_init();
+	initDB();
 	hintCMD();
 	yyparse();
 	return 0;
@@ -60,11 +60,9 @@ statement: createsql | selectsql | exitsql | %empty
 
 usestmt: USE ID {
 		useDatabase($2);
-		hintCMD();
 	}
 savestmt: SAVE{
 		saveDatabase();
-		hintCMD();
 	}
 
 selectsql: SELECT '*' FROM tables {
@@ -104,7 +102,7 @@ createsql: CREATE TABLE ID '(' create_items ')' {
 create_item: ID INT{
 		$$=(create_items_def *)malloc(sizeof(create_items_def));
 		$$->field=$1;
-		$$->type=0;
+		$$->type=FieldType::int32;
 		$$->next=nullptr;
 	}
 	/*todo: text field*/

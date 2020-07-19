@@ -1,0 +1,7 @@
+data/*
+.vscode/*
+*.o
+lexer.*
+parser.*
+simplesql
+

@@ -5,13 +5,14 @@
 #ifndef STORAGE_H
 #define STORAGE_H
 
-#include "util.h"
+#include "common.h"
 #include <cstdio>
 #include <vector>
 #include <map>
 using std::vector;
 using std::map;
-using std::FILE, std::fopen;
+using std::FILE;
+using std::fopen;
 
 struct FieldReturn_t{
     void *p;
@@ -30,7 +31,7 @@ struct FieldCellInfo{
         case FieldType::nchar:
             return extra;
         default:
-            fatal("Fatal: error loading field type\n");
+            fatal("fatal: error loading field type\n");
         }
     }
     FieldCellInfo(FieldType ft, string name):type(ft),name(name){}
@@ -45,7 +46,7 @@ struct FieldInfo{
 
     FieldInfo(vector<FieldCellInfo> __v):fields(__v){
         offset.resize(fields.size());
-        for (int i=1;i<offset.size();i++)
+        for (size_t i=1;i<offset.size();i++)
             offset[i]=offset[i-1]+fields[i-1].length();
         int fid=0;
         for (const auto &v:fields)
@@ -58,9 +59,9 @@ typedef char* PRecord_t;
 class Table{
 public:
     int count;
+    FieldInfo field;
     bool loaded;
     vector<PRecord_t> data;
-    FieldInfo field;
     string name;
     
     void loadData(FILE *fi, string _name, int _item_count);
@@ -77,7 +78,7 @@ public:
         return field.offset[field.name2fid[fieldname]];
     }
 
-    Table(FieldInfo _field):field(_field),loaded(false){}
+    Table(const FieldInfo &_field):field(_field),loaded(false){}
     ~Table();
 };
 
