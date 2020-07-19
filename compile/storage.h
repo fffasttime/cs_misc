@@ -16,8 +16,12 @@ using std::fopen;
 
 struct FieldReturn_t{
     void *p;
-    int int32(){return *(int *)p;}
+    int &int32(){return *(int *)p;}
     char *nchar(){return (char *)p;}
+    //set a string
+    void nchar(char *s){
+        strcpy((char *)p, s);
+    }
 };
 
 struct FieldCellInfo{

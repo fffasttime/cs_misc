@@ -12,27 +12,37 @@
 #include "storage.h"
 using std::vector;
 
-/*'CREATE TABLE table_id (create_items_def)'*/
-struct create_items_def{ 
+struct create_item_def_unit{ 
 	/*field name*/
-	char *field; 
-	FieldType type;    
-	create_items_def *next;
+	string name;
+	FieldType type;
+	int extra;  
+};
+/*CREATE TABLE table_id (create_items_def)*/
+typedef vector<create_item_def_unit> create_item_def;
+
+/* SELECT select_item_def FROM ...*/
+typedef vector<string> select_item_def;
+
+union KeyValue{
+	int intval;
+	string strval;
 };
 
-struct item_def 	/*item info when execute 'SELECT items_list FROM ...' etc.*/
-{
-	char *field;	/*name*/
-	struct field *pos;	/*real pos*/
-	struct item_def *next;
+/* INSERT INTO table_name VALUES (value_def) */
+struct value_def_unit{
+	KeyValue value;
+	FieldType type;
 };
+typedef vector<value_def_unit> value_def;
 
-struct conditions_def /*codition binary tree node type*/
-{
+/*codition binary tree node type*/
+struct conditions_def{
 	/*INT:0  STRING:1*/	
 	int type;  
 	/*item*/
-	item_def *litem; 
+	// !-- TODO: check again
+	select_item_def *litem; 
 	int intv;		
 	char *strv;
 	/* '=':1 | '>':2 | '<':3 | '>=':4 | '<=':5 | '!=':6 | 'AND':7 | 'OR':8 */		
@@ -41,25 +51,20 @@ struct conditions_def /*codition binary tree node type*/
 	conditions_def *right;
 };
 
-struct table_def	/*'SELECT * FROM tabel_list WHERE ...'*/
-{
-	/*table_name*/
-	char *table;
-	/*real_table_pos*/
-	Table *pos;
-	table_def *next;
-};
+/*SELECT * FROM tabel_list WHERE ...*/
+typedef vector<string> table_def;
 
 void hintCMD();
 vector<string> listDir(const char *path);
 void initDB();
 
-void createTable(char *tableval, create_items_def *crtitem_root);
-void selection(item_def *item_first, table_def *table_first, conditions_def *con_root);
+void createTable(char *name, create_item_def *crtitem_begin);
+void selection(select_item_def *item_begin, table_def *table_begin, conditions_def *con_root);
 
 void createDatabase(char *name);
 void useDatabase(char *name);
 void saveDatabase();
+void insertRecord(char *name, value_def val_begin, select_item_def *selitem_begin);
 
 
 #endif

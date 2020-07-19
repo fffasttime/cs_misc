@@ -19,7 +19,7 @@ vector<string> listDir(const char *path){
     printf_debug("debug: listing folder, pdir=%p\n", pdir);
     while ((pdirent=readdir(pdir))!=NULL){
         //list all file
-        if (pdirent->d_reclen==24 && pdirent->d_type==8)
+        if (pdirent->d_type==8)
             list.emplace_back(pdirent->d_name);
     }
     closedir(pdir);
@@ -36,15 +36,36 @@ void initDB(){
             printf_info("info: found db file '%s'\n",s.c_str());
         }
     }
-    printf_info("into: type 'use <schema name>' or create a new db\n");
+    printf_info("info: type 'use <schema name>' or create a new db\n");
 }
 
-void createTable(char *tableval, create_items_def *crtitem_root){
-    printf("trying create %s\n", tableval);
-}
-
-void selection(item_def *item_first, table_def *table_first, conditions_def *con_root){
+void createTable(char *name, create_item_def *crtitem_begin){
+    if (strlen(name)>30){
+        printf_error("error: table name is too long!\n");
+        return;
+    }
+    printf_debug("debug: trying create %s\n", name);
     
+}
+
+void selection(select_item_def *item_begin, table_def *table_begin, conditions_def *con_root){
+    
+}
+
+/**
+ * insert single record
+ */
+void insertRecord(char *name, value_def val_begin, select_item_def *selitem_begin){
+    if (!db.name2tid.count(name)){
+        printf("error: table '%s' does not exist\n", name);
+        return;
+    }
+    if (selitem_begin==nullptr){
+        
+    }
+    else{
+        
+    }
 }
 
 void createDatabase(char *name){

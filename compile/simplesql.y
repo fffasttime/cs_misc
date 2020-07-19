@@ -22,24 +22,25 @@ int main(int argc, char **argv){
 
 %union{
 	int intval;
-	char *strval;
-	create_items_def *crtitemsval;
+	string strval;
+	create_item_def *crtitemval;
+	select_item_def *selitemval;
 	conditions_def *conval;
-	item_def *itemval;
 	table_def *tbval;
 }
 
 %error-verbose
 
-%token AND CREATE DATABASE DELETE DROP EXIT FROM SAVE SCHEMA SELECT TABLE USE WHERE
+%token AND CREATE DATABASE DELETE DROP EXIT FROM INSERT 
+%token INTO SAVE SCHEMA SELECT TABLE USE WHERE
 %token <intval> NUMBER
 %token <strval> STRING ID INT CHAR
 
 /* binding content */
 %type <intval> comparator
-%type <crtitemsval> create_items create_item
+%type <crtitemval> create_items create_item
 %type <conval> condition conditions
-%type <itemval> item item_list
+%type <selitemval> item item_list
 %type <tbval> tables
 
 %left OR
@@ -55,7 +56,7 @@ statementline: statement ';'
 				hintCMD();
 			}
 
-statement: createsql | selectsql | exitsql | %empty 
+statement: createsql | selectsql | exitsql | insertsql | %empty 
 	| usestmt | savestmt
 
 usestmt: USE ID {
@@ -84,13 +85,14 @@ selectsql: SELECT '*' FROM tables {
 
 
 exitsql: EXIT {
-		printf("Successfully exited\n");
+		printf_info("info: Saving data\n");
+		saveDatabase();
+		printf_info("info: Successfully exited\n");
 		exit(0);
 	}
 
 createsql: CREATE TABLE ID '(' create_items ')' {
 		createTable($3, $5);
-		puts("");
 	}
 	| CREATE DATABASE ID{
 		createDatabase($3);
@@ -100,49 +102,75 @@ createsql: CREATE TABLE ID '(' create_items ')' {
 	}
 
 create_item: ID INT{
-		$$=(create_items_def *)malloc(sizeof(create_items_def));
-		$$->field=$1;
+		$$ = new create_item_def;
+		$$->name=$1;
 		$$->type=FieldType::int32;
-		$$->next=nullptr;
 	}
-	/*todo: text field*/
+	| CHAR '(' NUMBER ')' {
+		$$->name=$1;
+		$$->type=FieldType::nchar;
+		$$->extra=$3;
+	}
 
-create_items:  create_item { $$ = $1; }
+create_items:  create_item { 
+		$$ = new create_item_def;
+		$$.emplace_back($1);
+	}
 	| create_items ',' create_item{
+		$$ = $1;
+		$$.push_back($3);
+	}
+
+insertsql: INSERT INTO ID VALUES '(' value_list ')'{
+		insertData($3, $6);
+	}
+	| INSERT INTO ID '(' item_list ')' VALUES '(' value_list ')'{
+		insertData($3, $9, $5);
+	}
+
+value_list: value {$$ = $1;}
+	| value_list ',' value{
 		$$ = $3;
-		$$->next=$1;	
+		$$->next = $1;
+	}
+
+value: NUMBER {
+		$$ = new value_def;
+		$$.emplace_back($1, FieldType::int32);
+	}
+	| STRING {
+		$$ = new value_def;
+		$$.strkey=$1;
+		$$->type = FieldType::nchar;
+	}
+
+tables:	ID {
+		$$ = new table_def;
+		$$.emplace_back($1);
+	}
+	| tables ',' ID{
+		$$ = $1;
+		$$.emplace_back($3);			
 	}
 
 
-tables:			ID {
-					$$ = new table_def;
-					$$->table = $1;
-					$$->next = nullptr;
-				}
-				| tables ',' ID{
-					$$ = new table_def;
-					$$->table = $3;
-					$$->next = $1;				
-				}
-
-
-item: 			ID {
-					$$ = new item_def;
-					$$->field = $1;
-					$$->pos = nullptr;
-					$$->next = nullptr;
-				}
+item:   ID {
+		$$ = new item_def;
+		$$->name = $1;
+		$$->pos = nullptr;
+		$$->next = nullptr;
+	}
 
 item_list: 		  item { $$ = $1; }
-				| item_list ',' item { $$ = $3; }
+	| item_list ',' item { $$ = $3; }
 
 comparator:		  '='     {$$ = 1;}
-				| '>'     {$$ = 2;}
-				| '<'     {$$ = 3;}
-				| ">="    {$$ = 4;}
-				| "<="    {$$ = 5;}
-				| "<>"    {$$ = 6;}
-				| '!' '=' {$$ = 6;}
+	| '>'     {$$ = 2;}
+	| '<'     {$$ = 3;}
+	| ">="    {$$ = 4;}
+	| "<="    {$$ = 5;}
+	| "<>"    {$$ = 6;}
+	| '!' '=' {$$ = 6;}
 
 condition: item comparator NUMBER {
 		$$ = new conditions_def;

@@ -4,6 +4,9 @@
 
 void Table::loadData(FILE *fi, string _name, int _item_count){
     assert(!loaded);
+    name = _name;
+    count = _item_count;
+
     data.resize(count);
 
     for (int i=0;i<count;i++){
@@ -38,7 +41,7 @@ Table::~Table(){
  */
 bool DataBase::checkDBFile(FILE *fi, int &table_count){
     char predata[64];
-    if (fread(predata, 64, 1, fi) < 64){
+    if (fread(predata, 64, 1, fi) == 0){
         printf_error("error: bad db file format, unknown head\n");
         return false;
     }
@@ -101,7 +104,7 @@ void DataBase::loadData_tables(FILE *fi, int table_count){
         tables.back().loadData(fi, string("__tbmeta_")+dbmeta.read(i,"name").nchar(), 
                         dbmeta.read(i,"count_field").int32());
     }
-
+    
     // load ordinary data
     for (int i=0;i<table_count;i++){
         vector<FieldCellInfo> fields;
@@ -135,7 +138,8 @@ void DataBase::loadData(string _path, string _name){
             fclose(fi);
             return;
         }
-        
+        printf_debug("debug: schema %s has %d tables\n", name.c_str(), table_count);
+
         if (loaded)
             freeData();
 
@@ -162,6 +166,10 @@ void DataBase::createNew(string _path, string _name){
     if (loaded)
         freeData();
     
+    tables.emplace_back(getDBMetaFieldInfo());
+    tables[0].loaded = true; // don'n need to load
+
+    loaded=true;
     path=_path;
     name=_name;
 }

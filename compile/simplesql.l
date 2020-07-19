@@ -25,11 +25,14 @@ drop   {return DROP;}
 exit   {return EXIT;}
 from   {return FROM;}
 int	   {return INT;}
+insert {return INSERT;}
+into   {return INTO;}
 save   {return SAVE;}
 select {return SELECT;}
 schema {return SCHEMA;}
 table  {return TABLE;}
 use    {return USE;}
+values {return VALUES;}
 where  {return WHERE;}
 
 [;] | 
@@ -45,8 +48,15 @@ where  {return WHERE;}
 ">=" |
 "<>"   {return *yytext;}
  
-{id}  {yylval.strval=strdup(yytext); return ID;}
-{string}  {yylval.strval=strdup(yytext); return STRING;}
+{id}  {
+    yylval.strval=string(yytext);
+    /* to lowercase */
+    for (auto &c: yylval.strval)
+        if (c>='A' && c<='Z') 
+            c=c-'A'+'a';
+    return ID;
+}
+{string}  {yylval.strval=string(yytext); return STRING;}
 {number} {yylval.intval=atoi(yytext); return NUMBER;}
 \n     {return *yytext;}
 [ \t]+
