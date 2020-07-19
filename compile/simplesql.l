@@ -17,15 +17,19 @@ number [0-9]+
 %%
 
 and    {return AND;}
+char   {return CHAR;}
 create {return CREATE;}
 delete {return DELETE;}
+database {return DATABASE;}
 drop   {return DROP;}
 exit   {return EXIT;}
 from   {return FROM;}
 int	   {return INT;}
-char   {return CHAR;}
+save   {return SAVE;}
 select {return SELECT;}
+schema {return SCHEMA;}
 table  {return TABLE;}
+use    {return USE;}
 where  {return WHERE;}
 
 [;] | 

@@ -31,7 +31,7 @@ int main(int argc, char **argv){
 
 %error-verbose
 
-%token AND CREATE DELETE DROP EXIT FROM SELECT TABLE WHERE
+%token AND CREATE DATABASE DELETE DROP EXIT FROM SAVE SCHEMA SELECT TABLE USE WHERE
 %token <intval> NUMBER
 %token <strval> STRING ID INT CHAR
 
@@ -55,7 +55,17 @@ statementline: statement ';'
 				hintCMD();
 			}
 
-statement: createsql | selectsql | exitsql | %empty
+statement: createsql | selectsql | exitsql | %empty 
+	| usestmt | savestmt
+
+usestmt: USE ID {
+		useDatabase($2);
+		hintCMD();
+	}
+savestmt: SAVE{
+		saveDatabase();
+		hintCMD();
+	}
 
 selectsql: SELECT '*' FROM tables {
 		selection(nullptr, $4, nullptr);
@@ -84,7 +94,13 @@ createsql: CREATE TABLE ID '(' create_items ')' {
 		createTable($3, $5);
 		puts("");
 	}
-	/*todo: create database*/
+	| CREATE DATABASE ID{
+		createDatabase($3);
+	}
+	| CREATE SCHEMA ID{
+		createDatabase($3);
+	}
+
 create_item: ID INT{
 		$$=(create_items_def *)malloc(sizeof(create_items_def));
 		$$->field=$1;

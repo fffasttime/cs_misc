@@ -1,5 +1,5 @@
 /**
- * This header file defines some data structue used for sql parser
+ * This header file defines operations and data structue used for sql parser
 */
 
 #ifndef SIMPLESQL_H
@@ -13,6 +13,12 @@ using std::vector;
 
 vector<string> list_dir(string path);
 void db_init();
+
+void createDatabase(char *name);
+void createTable(char *tableval, create_items_def *crtitem_root);
+void selection(item_def *item_first, table_def *table_first, conditions_def *con_root);
+void useDatabase(char *name);
+
 
 /*'CREATE TABLE table_id (create_items_def)'*/
 struct create_items_def{ 
@@ -51,8 +57,5 @@ struct table_def	/*'SELECT * FROM tabel_list WHERE ...'*/
 	Table *pos;
 	table_def *next;
 };
-
-void createTable(char *tableval, create_items_def *crtitem_root);
-void selection(item_def *item_first, table_def *table_first, conditions_def *con_root);
 
 #endif

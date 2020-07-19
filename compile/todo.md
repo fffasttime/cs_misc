@@ -23,10 +23,10 @@ Each database have one table, always occupy the head of .db file.
 First 64 Byte is metadata of full database  
 |DB_identification("SIMPLEDB") 10 byte | version 10 byte | other infomathon(reserved)|   
 Then a table lists ordinary tables in this database    
-{'meta_tid':int, 'tid':int, 'table_name':char(32), 'offset':__pointer, 'items':int}  
+{'name':char(32), 'count':int, 'count_field':int}  
 ## table matadata  
 Then every table have a table save its field info  
-{'fid':int, 'field_type':int, 'field_type_extra':int, 'field_name', (TODO)'foreign_key'}  
+{'type':int, 'extra':int, 'name', (TODO)'foreign_key'}  
 
 # test & debug  
 testcase.cc tests implement of db.  

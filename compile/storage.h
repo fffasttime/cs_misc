@@ -6,17 +6,18 @@
 #define STORAGE_H
 
 #include "util.h"
-#include <stdio.h>
+#include <cstdio>
 #include <vector>
 #include <map>
 using std::vector;
 using std::map;
+using std::FILE, std::fopen;
 
 struct FieldReturn_t{
     void *p;
     int int32(){return *(int *)p;}
-    char *nchar(){return *(char *)p;}
-}
+    char *nchar(){return (char *)p;}
+};
 
 struct FieldCellInfo{
     FieldType type;
@@ -50,16 +51,15 @@ struct FieldInfo{
         for (const auto &v:fields)
             name2fid[v.name]=fid++;
     }
-}
+};
 
 typedef char* PRecord_t;
 
 class Table{
 public:
-    int tid;
-    int item_count;
+    int count;
     bool loaded;
-    vector<PRecord> data;
+    vector<PRecord_t> data;
     FieldInfo field;
     string name;
     
@@ -77,24 +77,29 @@ public:
         return field.offset[field.name2fid[fieldname]];
     }
 
-    Table(_field):field(_field),loaded(false){}
+    Table(FieldInfo _field):field(_field),loaded(false){}
     ~Table();
 };
 
 class DataBase{
-private:
+public:
     string path;
     string name;
     bool loaded;
     vector<Table> tables;
-    map<string> name2id()
+    //update when tables change
+    map<string, int> name2tid;
 private:
-    freeData();
+    void freeData();
+    void loadData_tables(FILE *fi, int table_count);
+    bool checkDBFile(FILE *fi, int &table_count);
+    void updateMap();
 public:
     DataBase():loaded(false){}
     ~DataBase();
-    loadData(string _path, string _name);
-    saveData();
+    void loadData(string _path, string _name);
+    void saveData();
+    void createNew(string _path, string _name);
 };
 
 #endif
