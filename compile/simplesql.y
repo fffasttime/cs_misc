@@ -22,26 +22,33 @@ int main(int argc, char **argv){
 
 %union{
 	int intval;
-	string strval;
+	char *strval;
 	create_item_def *crtitemval;
+	create_item_def_unit crtitemvalu;
 	select_item_def *selitemval;
+	value_def *valdef;
+	value_def_unit valdefu;
 	conditions_def *conval;
 	table_def *tbval;
 }
 
 %error-verbose
 
-%token AND CREATE DATABASE DELETE DROP EXIT FROM INSERT 
-%token INTO SAVE SCHEMA SELECT TABLE USE WHERE
+%token AND CREATE CHAR DATABASE DELETE DROP EXIT FROM INSERT 
+%token INT INTO SAVE SCHEMA SELECT TABLE USE VALUES WHERE
 %token <intval> NUMBER
-%token <strval> STRING ID INT CHAR
+%token <strval> STRING ID
 
 /* binding content */
 %type <intval> comparator
-%type <crtitemval> create_items create_item
+%type <strval> item table
+%type <crtitemvalu> create_item
+%type <crtitemval> create_items
 %type <conval> condition conditions
-%type <selitemval> item item_list
+%type <selitemval> items
 %type <tbval> tables
+%type <valdefu> value
+%type <valdef> value_list
 
 %left OR
 %left AND
@@ -70,7 +77,7 @@ selectsql: SELECT '*' FROM tables {
 		selection(nullptr, $4, nullptr);
 		puts("");
 	}
-	| SELECT item_list FROM tables {
+	| SELECT items FROM tables {
 		selection($2, $4, nullptr);
 		puts("");
 	}
@@ -78,7 +85,7 @@ selectsql: SELECT '*' FROM tables {
 		selection(nullptr, $4, $6);
 		puts("");
 	}
-	| SELECT item_list FROM tables WHERE conditions {
+	| SELECT items FROM tables WHERE conditions {
 		selection($2, $4, $6);
 		puts("");
 	}
@@ -93,6 +100,7 @@ exitsql: EXIT {
 
 createsql: CREATE TABLE ID '(' create_items ')' {
 		createTable($3, $5);
+		delete $5;
 	}
 	| CREATE DATABASE ID{
 		createDatabase($3);
@@ -101,68 +109,67 @@ createsql: CREATE TABLE ID '(' create_items ')' {
 		createDatabase($3);
 	}
 
-create_item: ID INT{
-		$$ = new create_item_def;
-		$$->name=$1;
-		$$->type=FieldType::int32;
+create_item: ID INT {
+		$$.name=$1;
+		$$.type=FieldType::int32;
 	}
-	| CHAR '(' NUMBER ')' {
-		$$->name=$1;
-		$$->type=FieldType::nchar;
-		$$->extra=$3;
+	| ID CHAR '(' NUMBER ')' {
+		$$.name=$1;
+		$$.type=FieldType::nchar;
+		$$.extra=$4;
 	}
 
 create_items:  create_item { 
-		$$ = new create_item_def;
-		$$.emplace_back($1);
+		$$ = new create_item_def({$1});
 	}
 	| create_items ',' create_item{
 		$$ = $1;
-		$$.push_back($3);
+		$$->emplace_back($3);
 	}
 
 insertsql: INSERT INTO ID VALUES '(' value_list ')'{
-		insertData($3, $6);
+		insertRecord($3, $6, nullptr);
+		delete $6;
 	}
-	| INSERT INTO ID '(' item_list ')' VALUES '(' value_list ')'{
-		insertData($3, $9, $5);
-	}
-
-value_list: value {$$ = $1;}
-	| value_list ',' value{
-		$$ = $3;
-		$$->next = $1;
+	| INSERT INTO ID '(' items ')' VALUES '(' value_list ')'{
+		insertRecord($3, $9, $5);
+		delete $5;
+		delete $9;
 	}
 
 value: NUMBER {
-		$$ = new value_def;
-		$$.emplace_back($1, FieldType::int32);
+		$$.value.intval = $1;
+		$$.type = FieldType::int32;
 	}
 	| STRING {
-		$$ = new value_def;
-		$$.strkey=$1;
-		$$->type = FieldType::nchar;
+		$$.value.strval = $1;
+		$$.type = FieldType::nchar;
 	}
 
-tables:	ID {
-		$$ = new table_def;
-		$$.emplace_back($1);
+value_list: value { 
+		$$ = new value_def({$1});
 	}
-	| tables ',' ID{
+	| value_list ',' value {
 		$$ = $1;
-		$$.emplace_back($3);			
+		$$->emplace_back($3);
 	}
 
-
-item:   ID {
-		$$ = new item_def;
-		$$->name = $1;
-		$$->pos = nullptr;
-		$$->next = nullptr;
+table: ID {$$ = $1;}
+tables:	table {
+		$$ = new table_def({$1});
+	}
+	| tables ',' table {
+		$$ = $1;
+		$$->emplace_back($3);			
 	}
 
-item_list: 		  item { $$ = $1; }
-	| item_list ',' item { $$ = $3; }
+item: ID { $$ = $1; }
+
+items: item { $$ = new select_item_def({$1}); }
+	| items ',' item { 
+		$$ = $1;
+		$$->emplace_back($3);
+	}
 
 comparator:		  '='     {$$ = 1;}
 	| '>'     {$$ = 2;}

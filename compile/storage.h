@@ -7,12 +7,12 @@
 
 #include "common.h"
 #include <cstdio>
+#include <cstring>
 #include <vector>
 #include <map>
 using std::vector;
 using std::map;
 using std::FILE;
-using std::fopen;
 
 struct FieldReturn_t{
     void *p;

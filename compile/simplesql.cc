@@ -39,29 +39,36 @@ void initDB(){
     printf_info("info: type 'use <schema name>' or create a new db\n");
 }
 
-void createTable(char *name, create_item_def *crtitem_begin){
+void createTable(char *name, create_item_def *crtitem){
     if (strlen(name)>30){
         printf_error("error: table name is too long!\n");
         return;
     }
     printf_debug("debug: trying create %s\n", name);
-    
+    vector<FieldCellInfo> fields;
+    for (const auto &it : *crtitem){
+        fields.emplace_back(it.type, it.extra, it.name);
+        printf_debug("  field %u, type=%d, ex=%d, name=%s\n", \
+            fields.size(), it.type, it.extra, it.name);
+    }
 }
 
-void selection(select_item_def *item_begin, table_def *table_begin, conditions_def *con_root){
+void selection(select_item_def *item, 
+                table_def *table, conditions_def *con_root){
     
 }
 
 /**
  * insert single record
  */
-void insertRecord(char *name, value_def val_begin, select_item_def *selitem_begin){
+void insertRecord(char *name, value_def *val, select_item_def *selitem){
     if (!db.name2tid.count(name)){
         printf("error: table '%s' does not exist\n", name);
         return;
     }
-    if (selitem_begin==nullptr){
-        
+    Table &tb=db.tables[db.name2tid[name]];
+    if (selitem==nullptr){
+        tb.count++;
     }
     else{
         

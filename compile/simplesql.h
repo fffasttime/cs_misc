@@ -14,7 +14,7 @@ using std::vector;
 
 struct create_item_def_unit{ 
 	/*field name*/
-	string name;
+	char *name;
 	FieldType type;
 	int extra;  
 };
@@ -26,7 +26,7 @@ typedef vector<string> select_item_def;
 
 union KeyValue{
 	int intval;
-	string strval;
+	char *strval;
 };
 
 /* INSERT INTO table_name VALUES (value_def) */
@@ -42,7 +42,7 @@ struct conditions_def{
 	int type;  
 	/*item*/
 	// !-- TODO: check again
-	select_item_def *litem; 
+	char *litem; 
 	int intv;		
 	char *strv;
 	/* '=':1 | '>':2 | '<':3 | '>=':4 | '<=':5 | '!=':6 | 'AND':7 | 'OR':8 */		
@@ -58,13 +58,13 @@ void hintCMD();
 vector<string> listDir(const char *path);
 void initDB();
 
-void createTable(char *name, create_item_def *crtitem_begin);
-void selection(select_item_def *item_begin, table_def *table_begin, conditions_def *con_root);
+void createTable(char *name, create_item_def *crtitem);
+void selection(select_item_def *item, table_def *table, conditions_def *con_root);
 
 void createDatabase(char *name);
 void useDatabase(char *name);
 void saveDatabase();
-void insertRecord(char *name, value_def val_begin, select_item_def *selitem_begin);
+void insertRecord(char *name, value_def *val, select_item_def *selitem);
 
 
 #endif

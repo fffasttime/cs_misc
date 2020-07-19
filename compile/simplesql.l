@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <ctype.h>
 #include "simplesql.h"
 #include "parser.hh"
 %}
@@ -49,14 +50,12 @@ where  {return WHERE;}
 "<>"   {return *yytext;}
  
 {id}  {
-    yylval.strval=string(yytext);
-    /* to lowercase */
-    for (auto &c: yylval.strval)
-        if (c>='A' && c<='Z') 
-            c=c-'A'+'a';
+    yylval.strval=strdup(yytext); ; 
+    for (char *pc=yylval.strval;*pc;pc++)
+        *pc=tolower(*pc);
     return ID;
 }
-{string}  {yylval.strval=string(yytext); return STRING;}
+{string}  {yylval.strval=strdup(yytext); return STRING;}
 {number} {yylval.intval=atoi(yytext); return NUMBER;}
 \n     {return *yytext;}
 [ \t]+
