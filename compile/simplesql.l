@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include "simplesql.h"
 #include "parser.hh"
+
 %}
 
 %option caseless

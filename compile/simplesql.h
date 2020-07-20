@@ -14,9 +14,9 @@ using std::vector;
 
 struct create_item_def_unit{ 
 	/*field name*/
-	char *name;
 	FieldType type;
 	int extra;  
+	char *name;
 };
 /*CREATE TABLE table_id (create_items_def)*/
 typedef vector<create_item_def_unit> create_item_def;
@@ -64,7 +64,7 @@ void selection(select_item_def *item, table_def *table, conditions_def *con_root
 void createDatabase(char *name);
 void useDatabase(char *name);
 void saveDatabase();
-void insertRecord(char *name, value_def *val, select_item_def *selitem);
+void insertRecord(char *name, value_def *val, select_item_def *selitem, bool nocheck);
 
 
 #endif

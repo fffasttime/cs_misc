@@ -98,8 +98,8 @@ private:
     void freeData();
     void loadData_tables(FILE *fi, int table_count);
     bool checkDBFile(FILE *fi, int &table_count);
-    void updateMap();
 public:
+    void updateMap();
     DataBase():loaded(false){}
     ~DataBase();
     void loadData(string _path, string _name);
