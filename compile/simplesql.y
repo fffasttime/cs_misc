@@ -41,10 +41,9 @@ int main(int argc, char **argv){
 
 /* binding content */
 %type <intval> comparator
-%type <strval> item table
 %type <crtitemvalu> create_item
 %type <crtitemval> create_items
-%type <conval> condition conditions
+%type <conval> condition conditions condition_item
 %type <selitemval> items
 %type <tbval> tables
 %type <valdefu> value
@@ -75,19 +74,15 @@ savestmt: SAVE{
 
 selectsql: SELECT '*' FROM tables {
 		selection(nullptr, $4, nullptr);
-		puts("");
 	}
 	| SELECT items FROM tables {
 		selection($2, $4, nullptr);
-		puts("");
 	}
 	| SELECT '*' FROM tables WHERE conditions {
 		selection(nullptr, $4, $6);
-		puts("");
 	}
 	| SELECT items FROM tables WHERE conditions {
 		selection($2, $4, $6);
-		puts("");
 	}
 
 
@@ -154,19 +149,16 @@ value_list: value {
 		$$->emplace_back($3);
 	}
 
-table: ID {$$ = $1;}
-tables:	table {
+tables:	ID {
 		$$ = new table_def({$1});
 	}
-	| tables ',' table {
+	| tables ',' ID {
 		$$ = $1;
 		$$->emplace_back($3);			
 	}
 
-item: ID { $$ = $1; }
-
-items: item { $$ = new select_item_def({$1}); }
-	| items ',' item { 
+items: ID { $$ = new select_item_def({$1}); }
+	| items ',' ID { 
 		$$ = $1;
 		$$->emplace_back($3);
 	}
@@ -179,36 +171,47 @@ comparator:		  '='     {$$ = 1;}
 	| "<>"    {$$ = 6;}
 	| '!' '=' {$$ = 6;}
 
-condition: item comparator NUMBER {
+condition_item: ID {
 		$$ = new conditions_def;
-		$$->type = 0;
-		$$->litem = $1;
-		$$->intv = $3;
-		$$->cmp_op = $2;
-		$$->left = nullptr;
-		$$->right = nullptr;
+		$$->type = 3;
+		$$->strv = $1;
+		$$->left = $$->right = nullptr;
 	}
-	| item comparator STRING {
+	| NUMBER {
 		$$ = new conditions_def;
 		$$->type = 1;
-		$$->litem = $1;
-		$$->strv = $3;
-		$$->cmp_op = $2;
-		$$->left = nullptr;
-		$$->right = nullptr;
+		$$->intv = $1;
+		$$->left = $$->right = nullptr;
+	}
+	| STRING {
+		$$ = new conditions_def;
+		$$->type = 2;
+		$$->strv = $1;
+		$$->left = $$->right = nullptr;
 	}
 
-conditions: condition { $$ = $1; }
-	|   '(' condition ')' { $$ = $2; }
-	|   conditions AND conditions {
+condition: condition_item { $$ = $1; }
+	| condition comparator condition_item {
 		$$ = new conditions_def;
-		$$->cmp_op = 7;
+		$$->type = 0;
+		$$->intv = $2;
 		$$->left = $1;
 		$$->right = $3;	
 	}
-	|   conditions OR conditions {
+
+conditions: condition { $$ = $1; }
+	|   '(' conditions ')' { $$ = $2; }
+	|   conditions AND condition {
 		$$ = new conditions_def;
-		$$->cmp_op = 8;
+		$$->type = 0;
+		$$->intv = 7;
+		$$->left = $1;
+		$$->right = $3;	
+	}
+	|   conditions OR condition {
+		$$ = new conditions_def;
+		$$->type = 0;
+		$$->intv = 8;
 		$$->left = $1;
 		$$->right = $3;	
 	}

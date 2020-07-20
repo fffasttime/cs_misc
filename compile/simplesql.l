@@ -12,9 +12,12 @@
 %option caseless
 /*%option c++*/
 
+ws [ \t]+
 string [\'][A-Za-z][A-Za-z0-9_]*[\']
 id [A-Za-z][A-Za-z0-9_]*
 number [0-9]+
+comment \-\-[^\n]*
+comment2 \/\*.*\*\/
 
 %%
 
@@ -58,8 +61,10 @@ where  {return WHERE;}
 }
 {string}  {yylval.strval=strdup(yytext); return STRING;}
 {number} {yylval.intval=atoi(yytext); return NUMBER;}
+{ws}
+{comment}
+{comment2}
 \n     {return *yytext;}
-[ \t]+
 
  /*bad character*/
 . {fprintf(stderr, "lex error, unexpected charactor '%s'\n", yytext);}

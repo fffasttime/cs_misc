@@ -48,10 +48,11 @@ struct FieldInfo{
     vector<FieldCellInfo> fields;
     int length;
 
-    FieldInfo(vector<FieldCellInfo> __v):fields(__v){
+    FieldInfo(const vector<FieldCellInfo> &__v):fields(__v){
         offset.resize(fields.size());
         for (size_t i=1;i<offset.size();i++)
             offset[i]=offset[i-1]+fields[i-1].length();
+        length=offset.back()+fields.back().length();
         int fid=0;
         for (const auto &v:fields)
             name2fid[v.name]=fid++;
@@ -86,21 +87,26 @@ public:
     ~Table();
 };
 
+FieldInfo getDBMetaFieldInfo();
+FieldInfo getTableMetaFieldInfo();
+
 class DataBase{
 public:
     string path;
     string name;
     bool loaded;
+    Table dbmeta;
     vector<Table> tables;
+    vector<Table> tbmeta;
     //update when tables change
-    map<string, int> name2tid;
+    map<string, Table*> name_tab;
 private:
     void freeData();
     void loadData_tables(FILE *fi, int table_count);
     bool checkDBFile(FILE *fi, int &table_count);
 public:
     void updateMap();
-    DataBase():loaded(false){}
+    DataBase():loaded(false),dbmeta(getDBMetaFieldInfo()){}
     ~DataBase();
     void loadData(string _path, string _name);
     void saveData();

@@ -26,7 +26,7 @@ typedef vector<string> select_item_def;
 
 union KeyValue{
 	int intval;
-	char *strval;
+	const char *strval;
 };
 
 /* INSERT INTO table_name VALUES (value_def) */
@@ -38,15 +38,15 @@ typedef vector<value_def_unit> value_def;
 
 /*codition binary tree node type*/
 struct conditions_def{
-	/*INT:0  STRING:1*/	
+	/* binary_op:0  NUMBER:1 STRING:2 id:3 */	
 	int type;  
-	/*item*/
-	// !-- TODO: check again
-	char *litem; 
-	int intv;		
-	char *strv;
-	/* '=':1 | '>':2 | '<':3 | '>=':4 | '<=':5 | '!=':6 | 'AND':7 | 'OR':8 */		
-	int cmp_op;
+	/** 
+	 * NUMBER or cmp_op_id 
+	 * '=':1 | '>':2 | '<':3 | '>=':4 | '<=':5 | '!=':6 | 'AND':7 | 'OR':8 
+	 */	
+	int intv;
+	/* STRING or ID*/
+	char *strv;	
 	conditions_def *left;
 	conditions_def *right;
 };
@@ -59,12 +59,21 @@ vector<string> listDir(const char *path);
 void initDB();
 
 void createTable(char *name, create_item_def *crtitem);
-void selection(select_item_def *item, table_def *table, conditions_def *con_root);
 
 void createDatabase(char *name);
 void useDatabase(char *name);
 void saveDatabase();
-void insertRecord(char *name, value_def *val, select_item_def *selitem, bool nocheck);
+void insertRecord(const char *name, value_def *val, select_item_def *selitem, bool nocheck = false);
 
+void selection(select_item_def *item, table_def *table, conditions_def *con_root);
+
+class Searcher{
+private:
+	select_item_def &projname;
+	conditions_def *con_root;
+	void debug(conditions_def *cur, int dep = 0);
+public:
+	Searcher(select_item_def *item, table_def *table, conditions_def *con_root);
+};
 
 #endif
