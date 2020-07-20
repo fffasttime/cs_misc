@@ -17,7 +17,7 @@ string [\'][A-Za-z][A-Za-z0-9_]*[\']
 id [A-Za-z][A-Za-z0-9_]*
 number [0-9]+
 comment \-\-[^\n]*
-comment2 \/\*.*\*\/
+comment2 \/\*(\s|.)*?\*\/
 
 %%
 

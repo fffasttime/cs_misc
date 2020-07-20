@@ -6,13 +6,18 @@
 #define STORAGE_H
 
 #include "common.h"
+#include <cassert>
 #include <cstdio>
 #include <cstring>
 #include <vector>
 #include <map>
+#include <exception>
+using std::exception;
 using std::vector;
 using std::map;
 using std::FILE;
+
+class IOException:exception{};
 
 struct FieldReturn_t{
     void *p;
@@ -26,14 +31,15 @@ struct FieldReturn_t{
 
 struct FieldCellInfo{
     FieldType type;
-    int extra; //some type have extra info
+    int extra; // some type have extra info
     string name;
     int length(){
         switch (type){
         case FieldType::int32:
             return 4;
         case FieldType::nchar:
-            return extra;
+            // '\0' need one more byte to save
+            return extra + 1;
         default:
             fatal("fatal: error loading field type\n");
         }
@@ -74,6 +80,9 @@ public:
     void freeData();
 
     FieldReturn_t read(int line, string fieldname){
+        #ifndef NODEBUG
+            assert(field.name2fid.count(fieldname));
+        #endif
         return {data[line]+field.offset[field.name2fid[fieldname]]};
     }
     FieldReturn_t readof(int line, int offset){

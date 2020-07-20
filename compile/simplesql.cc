@@ -59,6 +59,7 @@ void createTable(char *name, create_item_def *crtitem){
         /* printf_debug("  field %u, type=%d, ex=%d, name=%s\n", 
             fields.size(), it.type, it.extra, it.name); */
         fields.emplace_back(it.type, it.extra, it.name);
+        
         const auto &cur=fields.back();
         if (cur.name.size()>30){
             printf_error("error: one field name is too long!\n");
@@ -99,7 +100,7 @@ void createTable(char *name, create_item_def *crtitem){
     //insert table
     db.tables.emplace_back(FieldInfo(fields));
     db.tables.back().name=name;
-    db.tbmeta.back().loaded=true;
+    db.tables.back().loaded=true;
     db.name_tab[name]=&db.tables.back();
 }
 
@@ -175,7 +176,7 @@ void insertRecord(const char *name, value_def *val, select_item_def *selitem, bo
     }
     next:
     //generate record
-    auto record=(PRecord_t)malloc(tb.field.length);
+    auto record=(PRecord_t)calloc(tb.field.length, 1);
     if (record==nullptr){
         printf_error("memory error: fail to allocate %d space", tb.field.length);
         return;
@@ -211,13 +212,14 @@ void Searcher::debug(conditions_def *cur, int dep){
     if (cur->type==0){
         switch (cur->intv)
         {
-        case 1: puts(">"); break;
-        case 2: puts("<"); break;
-        case 3: puts(">="); break;
-        case 4: puts("<="); break;
-        case 5: puts("!="); break;
-        case 6: puts("AND"); break;
-        case 7: puts("OR"); break;
+        case 1: puts("="); break;
+        case 2: puts(">"); break;
+        case 3: puts("<"); break;
+        case 4: puts(">="); break;
+        case 5: puts("<="); break;
+        case 6: puts("!="); break;
+        case 7: puts("AND"); break;
+        case 8: puts("OR"); break;
         }
     }
     else if (cur->type == 1){
@@ -238,12 +240,13 @@ Searcher::Searcher(select_item_def *item, table_def *table, conditions_def *con_
     for (const auto &tabname: *table){
         auto it=db.name_tab.find(tabname);
         if (it==db.name_tab.end()){
-            printf("error: no table named '%s'", tabname.c_str());
+            printf("error: no table named '%s'\n", tabname.c_str());
             return;
         }
         tabs.push_back(it->second);
     }
     debug(con_root);
+    
 }
 
 void selection(select_item_def *item, table_def *table, conditions_def *con_root){

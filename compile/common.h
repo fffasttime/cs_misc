@@ -5,6 +5,7 @@
 #include <cassert>
 using std::string;
 
+//#define NODEBUG
 #define DB_DATA_PATH "./data/"
 
 [[noreturn]] void fatal(const char *fmt, ...);

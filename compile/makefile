@@ -14,6 +14,6 @@ parser.o : simplesql.y
 	g++ -c parser.cc $(args)
 lexer.o : simplesql.l
 	flex -o lexer.cc simplesql.l
-	g++ -c lexer.cc $(args)
+	g++ -c lexer.cc -std=c++11
 clean : 
 	rm -f lexer.* parser.* simplesql *.o

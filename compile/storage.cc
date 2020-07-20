@@ -8,23 +8,38 @@ void Table::loadData(FILE *fi, string _name, int _item_count){
     count = _item_count;
 
     data.resize(count);
+    printf_debug("debug: loading table '%s', %d items\n", 
+        name.c_str(), count);
 
-    for (int i=0;i<count;i++){
-        data[i] = (PRecord_t)malloc(field.length);
-        if (data[i]==nullptr){
-            printf_error("memory error: fail to allocate %d space", field.length);
-            return;
+    try{
+        for (int i=0;i<count;i++){
+            data[i] = (PRecord_t)malloc(field.length);
+            if (data[i]==nullptr){
+                printf_error("memory error: when creating table '%s', fail to allocate %d space", 
+                    field.length);
+                throw IOException();
+            }
+            if (!fread(data[i], field.length, 1, fi)){
+                printf_error("error: when loading table '%s', unable to read file.\n", name.c_str());
+                throw IOException();
+            }
         }
-        fread(data[i], field.length, 1, fi);
     }
-
+    catch(const IOException& e){
+        loaded = true;
+        freeData();
+        throw IOException();
+    }
+    
     loaded=true;
 }
+
 void Table::freeData(){
     assert(loaded);
     for (const auto &p : data)
         if (p != nullptr)
             free(p);
+    loaded=false;
 }
 
 void Table::saveData(FILE *fo){
@@ -59,7 +74,7 @@ bool DataBase::checkDBFile(FILE *fi, int &table_count){
     const char cur_version[]="0.1";
     char file_version[10];
     strncpy(file_version, predata+10, 10);
-    if (strncmp(file_version,"0.1",9)){
+    if (strncmp(file_version, "0.1", 9)){
         printf_error("error: version check failed of %s, current engine is %s, but files %s\n", 
                         path.c_str(), cur_version, file_version);
         return false;
@@ -73,7 +88,7 @@ bool DataBase::checkDBFile(FILE *fi, int &table_count){
  */
 FieldInfo getDBMetaFieldInfo(){
     vector<FieldCellInfo> fields;
-    fields.emplace_back(FieldType::nchar,32,"name");
+    fields.emplace_back(FieldType::nchar,31,"name");
     fields.emplace_back(FieldType::int32,"count");
     fields.emplace_back(FieldType::int32,"count_field");
     return FieldInfo(fields);
@@ -82,7 +97,7 @@ FieldInfo getTableMetaFieldInfo(){
     vector<FieldCellInfo> fields;
     fields.emplace_back(FieldType::int32,"type");
     fields.emplace_back(FieldType::int32,"extra");
-    fields.emplace_back(FieldType::nchar,32,"name");
+    fields.emplace_back(FieldType::nchar,31,"name");
     return FieldInfo(fields);
 }
 
@@ -93,6 +108,7 @@ DataBase::~DataBase(){
 }
 
 void DataBase::freeData(){
+    assert(loaded);
     loaded=false;
     tables.clear();
     tbmeta.clear();
@@ -116,11 +132,11 @@ void DataBase::loadData_tables(FILE *fi, int table_count){
     for (int i=0;i<table_count;i++){
         vector<FieldCellInfo> fields;
         
-        Table &tbmeta=tables[i+1];
-        for (int j=0;j<tbmeta.count;j++)
-        fields.emplace_back((FieldType)tbmeta.read(j,"type").int32(),
-                            tbmeta.read(j,"extra").int32(), 
-                            tbmeta.read(j,"name").nchar());
+        Table &cur=tbmeta[i];
+        for (int j=0;j<cur.count;j++)
+            fields.emplace_back((FieldType)cur.read(j,"type").int32(),
+                            cur.read(j,"extra").int32(), 
+                            cur.read(j,"name").nchar());
         tables.emplace_back(FieldInfo(fields));
         tables.back().loadData(fi, dbmeta.read(i,"name").nchar(), 
                         dbmeta.read(i,"count").int32());
@@ -153,7 +169,16 @@ void DataBase::loadData(string _path, string _name){
     if (loaded) freeData();
     printf_debug("debug: schema '%s' load, %d tables\n", name.c_str(), table_count);
 
-    loadData_tables(fi, table_count);
+    try{
+        loadData_tables(fi, table_count);
+    }
+    catch(const IOException& e){
+        loaded = true; // for freeData()
+        freeData();
+        fclose(fi);
+        return;
+    }
+
     updateMap();
     loaded=true;
     
@@ -177,11 +202,13 @@ void DataBase::createNew(string _path, string _name){
     if (loaded)
         freeData();
     
+    dbmeta.name="__dbmeta";
     dbmeta.loaded = true; // don'n need to load file
 
-    loaded=true;
-    path=_path;
-    name=_name;
+    name_tab[dbmeta.name] = &dbmeta;
+    loaded = true;
+    path = _path;
+    name = _name;
 }
 
 void DataBase::saveData(){
