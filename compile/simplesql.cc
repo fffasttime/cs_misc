@@ -1,6 +1,7 @@
 #include "simplesql.h"
 #include <dirent.h> //file system
 #include <iostream>
+#include <algorithm>
 DataBase db;
 
 void hintCMD(){
@@ -204,30 +205,34 @@ void saveDatabase(){
     db.saveData();
 }
 
+string conditions_def::to_str(){
+    if (type==0){
+        switch (intv)
+        {
+        case 1: return "=";
+        case 2: return ">";
+        case 3: return "<";
+        case 4: return ">=";
+        case 5: return "<=";
+        case 6: return "!=";
+        case 7: return "AND";
+        case 8: return "OR";
+        }
+    }
+    else if (type == 1){
+        return std::to_string(intv);
+    }
+    else{
+        return strv;
+    }
+}
+
 void Searcher::debug(conditions_def *cur, int dep){
     if (cur->left)
         debug(cur->left, dep + 1);
     for (int i = 0; i < dep * 2; i++)
         putchar(' ');
-    if (cur->type==0){
-        switch (cur->intv)
-        {
-        case 1: puts("="); break;
-        case 2: puts(">"); break;
-        case 3: puts("<"); break;
-        case 4: puts(">="); break;
-        case 5: puts("<="); break;
-        case 6: puts("!="); break;
-        case 7: puts("AND"); break;
-        case 8: puts("OR"); break;
-        }
-    }
-    else if (cur->type == 1){
-        printf("%d\n", cur->intv);
-    }
-    else{
-        puts(cur->strv);
-    }
+    puts(cur->to_str().c_str());
     if (cur->right)
         debug(cur->right, dep + 1);
 }
@@ -236,7 +241,6 @@ Searcher::Searcher(select_item_def *item, table_def *table, conditions_def *con_
     :projname(*item),con_root(con_root)                
 {
     // list tables
-    vector<Table *> tabs;
     for (const auto &tabname: *table){
         auto it=db.name_tab.find(tabname);
         if (it==db.name_tab.end()){
@@ -246,7 +250,113 @@ Searcher::Searcher(select_item_def *item, table_def *table, conditions_def *con_
         tabs.push_back(it->second);
     }
     debug(con_root);
-    
+    try{
+        search(con_root);
+    }
+    catch(const CommandException& e){
+        ;
+    }
+}
+
+bool compareint(int x, int y, int cmp_op){
+    switch (cmp_op)
+    {
+    case 1: return x==y;
+    case 2: return x>y;
+    case 3: return x<y;
+    case 4: return x>=y;
+    case 5: return x<=y;
+    case 6: return x!=y;
+    }
+}
+bool comparestr(char *x, char *y, int cmp_op){
+    int ret=strcmp(x, y);
+    switch (cmp_op)
+    {
+    case 1: return ret==0;
+    case 2: return ret>0;
+    case 3: return ret<0;
+    case 4: return ret>=0;
+    case 5: return ret<=0;
+    case 6: return ret;
+    }
+}
+
+const ItemTuple ItemTuple_True={-1, -1, -1, -1, -1, -1};
+const ItemSet ItemSet_True=ItemSet({ItemTuple_True});
+const ItemSet ItemSet_False=ItemSet();
+
+ItemSet Searcher::CompareTable0(conditions_def *left, conditions_def *right, int cmp_op){
+    if (left->type==1 || right->type==1){
+        int lx=left->type==1?left->intv:atoi(left->strv);
+        int rx=right->type==1?right->intv:atoi(right->strv);
+        return compareint(lx, rx, cmp_op)?ItemSet_True:ItemSet_False;
+    }
+    else{
+        return comparestr(left->strv, right->strv, cmp_op)?ItemSet_True:ItemSet_False;
+    }
+}
+
+pair<int, int> Searcher::findFieldName(char *name){
+    for (size_t i=0;i<tabs.size();i++){
+        if (tabs[i]->field.name2fid.count(name))
+            return {(int)i, tabs[i]->field.name2fid[name]};
+    }
+    printf_error("error: field name '%s' did not found\n", name);
+    throw CommandException();
+}
+
+ItemSet Searcher::CompareTable1(conditions_def *left, conditions_def *right, int cmp_op){
+    auto id=findFieldName(left->strv);
+    int tid=id.first;
+    int fid=id.second;
+    Table &tab=*tabs[tid];
+    for (size_t i=0;i<tab.data.size();i++){
+        
+    }
+}
+
+ItemSet Searcher::CompareTable2(conditions_def *left, conditions_def *right, int cmp_op){
+
+}
+
+ItemSet Searcher::conCompare(conditions_def *cur){
+    if (cur->type){
+        printf("error: '%s' can't be a condition\n", cur->to_str().c_str());
+        throw CommandException();
+    }
+    if (cur->left->type == 3 && cur->right->type == 3){
+        return CompareTable2(cur->left, cur->right, cur->intv);
+    }
+    else if (cur->left->type !=3 && cur->right->type != 3){
+        return CompareTable0(cur->left, cur->right, cur->intv);
+    }
+    else{
+        if (cur->left->type == 3)
+            return CompareTable1(cur->left, cur->right, cur->intv);
+        else
+            return CompareTable1(cur->right, cur->left, cur->intv);
+    }
+}
+
+ItemSet Searcher::conLogic(conditions_def *cur){
+    if (cur->type){
+        printf("error: '%s' can't be a condition\n", cur->to_str().c_str());
+        throw CommandException();
+    }
+    if (cur->intv==7 || cur->intv==8){ // AND/OR
+        ItemSet l=conLogic(cur->left), r=conLogic(cur->right);
+
+        // this method is easy, but very slow
+        l.insert(l.end(), r.begin(), r.end());
+        std::sort(l.begin(),l.end());
+        auto it=std::unique(l.begin(),l.end());
+        if (cur->intv==7) //intersection
+            return ItemSet(l.begin(), it);
+        else //union
+            return ItemSet(it, l.end());
+    }
+    return conCompare(cur); //not logic binary
 }
 
 void selection(select_item_def *item, table_def *table, conditions_def *con_root){

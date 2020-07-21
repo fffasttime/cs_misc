@@ -3,7 +3,10 @@
 
 #include <string>
 #include <cassert>
+#include <exception>
+using std::exception;
 using std::string;
+using std::pair;
 
 //#define NODEBUG
 #define DB_DATA_PATH "./data/"

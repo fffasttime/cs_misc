@@ -8,9 +8,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <vector>
+#include <array>
 #include "common.h"
 #include "storage.h"
 using std::vector;
+class CommandException:exception{};
 
 struct create_item_def_unit{ 
 	/*field name*/
@@ -49,6 +51,7 @@ struct conditions_def{
 	char *strv;	
 	conditions_def *left;
 	conditions_def *right;
+	string to_str();
 };
 
 /*SELECT * FROM tabel_list WHERE ...*/
@@ -67,13 +70,25 @@ void insertRecord(const char *name, value_def *val, select_item_def *selitem, bo
 
 void selection(select_item_def *item, table_def *table, conditions_def *con_root);
 
+typedef std::array<short, 6> ItemTuple;
+typedef vector<ItemTuple> ItemSet;
+
 class Searcher{
 private:
+	vector<Table *> tabs;
 	select_item_def &projname;
 	conditions_def *con_root;
 	void debug(conditions_def *cur, int dep = 0);
-public:
+	pair<int, int> findFieldName(char *name);
+public:                                                                                                                                               
 	Searcher(select_item_def *item, table_def *table, conditions_def *con_root);
+	ItemSet search(conditions_def *cur);
+	ItemSet conLogic(conditions_def *cur);
+	ItemSet conCompare(conditions_def *cur);
+	ItemSet CompareTable0(conditions_def *left, conditions_def *right, int cmp_op);
+	//left should be a ID
+	ItemSet CompareTable1(conditions_def *left, conditions_def *right, int cmp_op);
+	ItemSet CompareTable2(conditions_def *left, conditions_def *right, int cmp_op);
 };
 
 #endif

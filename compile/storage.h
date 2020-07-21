@@ -11,8 +11,6 @@
 #include <cstring>
 #include <vector>
 #include <map>
-#include <exception>
-using std::exception;
 using std::vector;
 using std::map;
 using std::FILE;
