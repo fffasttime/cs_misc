@@ -70,19 +70,26 @@ void insertRecord(const char *name, value_def *val, select_item_def *selitem, bo
 
 void selection(select_item_def *item, table_def *table, conditions_def *con_root);
 
+/**
+ * means the item position in table
+ * -1 stands for any.
+ */
 typedef std::array<short, 6> ItemTuple;
 typedef vector<ItemTuple> ItemSet;
 
 class Searcher{
 private:
 	vector<Table *> tabs;
-	select_item_def &projname;
+	select_item_def *projname;
 	conditions_def *con_root;
 	void debug(conditions_def *cur, int dep = 0);
 	pair<int, int> findFieldName(char *name);
-public:                                                                                                                                               
+public:                                               
+	ItemSet result;
+	
 	Searcher(select_item_def *item, table_def *table, conditions_def *con_root);
 	ItemSet search(conditions_def *cur);
+	ItemSet ItemSetFill(ItemTuple used, ItemSet input);
 	ItemSet conLogic(conditions_def *cur);
 	ItemSet conCompare(conditions_def *cur);
 	ItemSet CompareTable0(conditions_def *left, conditions_def *right, int cmp_op);

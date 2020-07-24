@@ -238,7 +238,7 @@ void Searcher::debug(conditions_def *cur, int dep){
 }
 
 Searcher::Searcher(select_item_def *item, table_def *table, conditions_def *con_root)
-    :projname(*item),con_root(con_root)                
+    :projname(item),con_root(con_root)                
 {
     // list tables
     for (const auto &tabname: *table){
@@ -251,10 +251,30 @@ Searcher::Searcher(select_item_def *item, table_def *table, conditions_def *con_
     }
     debug(con_root);
     try{
-        search(con_root);
+        // start search
+        result=conLogic(con_root);
     }
     catch(const CommandException& e){
         ;
+    }
+    if (projname==nullptr){
+        //show
+        for (const auto &it:result){
+            putchar('|');
+            for (size_t i=0;i<tabs.size();i++){
+                auto tab=tabs[i];
+                for (size_t j=0;j<tab->field.fields.size();j++){
+                    int offset=tab->field.offset[j];
+                    auto field=tab->field.fields[j];
+                    if (field.type==FieldType::int32){
+                        printf("%d", tab->readof(it[i], offset).int32());
+                    }
+                    else{
+                        puts( tab->readof(it[i], offset).nchar());
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -297,6 +317,9 @@ ItemSet Searcher::CompareTable0(conditions_def *left, conditions_def *right, int
     }
 }
 
+/**
+ * @return pair<int,int> : <table id in Searcher.tab, field id in real table>
+ */
 pair<int, int> Searcher::findFieldName(char *name){
     for (size_t i=0;i<tabs.size();i++){
         if (tabs[i]->field.name2fid.count(name))
@@ -309,15 +332,76 @@ pair<int, int> Searcher::findFieldName(char *name){
 ItemSet Searcher::CompareTable1(conditions_def *left, conditions_def *right, int cmp_op){
     auto id=findFieldName(left->strv);
     int tid=id.first;
-    int fid=id.second;
     Table &tab=*tabs[tid];
+    auto &field=tab.field.fields[id.second];
+    int offset=tab.field.offset[id.second];
+    ItemSet result;
+    // TODO : optimize, add type check
+    //enum
     for (size_t i=0;i<tab.data.size();i++){
-        
+        if(field.type==FieldType::int32){
+            int x=tab.readof(i, offset).int32();
+            if (compareint(x,right->intv,cmp_op)){
+                auto ins=ItemTuple_True;
+                ins[tid]=i;
+                result.emplace_back(std::move(ins));
+            }
+        }
+        else{
+            char *x=tab.readof(i, offset).nchar();
+            if (comparestr(x,right->strv,cmp_op)){
+                auto ins=ItemTuple_True;
+                ins[tid]=i;
+                result.emplace_back(std::move(ins));
+            }
+        }
     }
+    return result;
 }
 
 ItemSet Searcher::CompareTable2(conditions_def *left, conditions_def *right, int cmp_op){
+    auto id1=findFieldName(left->strv);
+    int tid1=id1.first;
+    Table &tab1=*tabs[tid1];
+    auto &field1=tab1.field.fields[id1.second];
+    int offset1=tab1.field.offset[id1.second];
 
+    auto id2=findFieldName(right->strv);
+    int tid2=id2.first;
+    Table &tab2=*tabs[tid2];
+    auto &field2=tab2.field.fields[id2.second];
+    int offset2=tab2.field.offset[id2.second];
+
+    ItemSet result;
+    // TODO : optimize, add type check
+    //enum
+    for (size_t i=0;i<tab1.data.size();i++){
+        if(field1.type==FieldType::int32){
+            int x=tab1.readof(i, offset1).int32();
+            for (int j=0;j<tab2.data.size();j++){
+                int y=tab2.readof(i, offset2).int32();
+                if (compareint(x,y,cmp_op)){
+                    auto ins=ItemTuple_True;
+                    ins[tid1]=i;
+                    ins[tid2]=j;
+                    result.emplace_back(std::move(ins));
+                }
+            }
+        }
+        else{
+            char *x=tab1.readof(i, offset1).nchar();
+            for (int j=0;j<tab2.data.size();j++){
+                char *y=tab2.readof(i, offset2).nchar();
+                if (comparestr(x,y,cmp_op)){
+                    auto ins=ItemTuple_True;
+                    ins[tid1]=i;
+                    ins[tid2]=j;
+                    result.emplace_back(std::move(ins));
+                }
+            }
+        }
+    }
+    return result;
 }
 
 ItemSet Searcher::conCompare(conditions_def *cur){
@@ -339,6 +423,24 @@ ItemSet Searcher::conCompare(conditions_def *cur){
     }
 }
 
+ItemSet Searcher::ItemSetFill(ItemTuple used, ItemSet input){
+    if (input.size()==0) return input;
+    ItemSet result;
+    for (size_t i=0;i<tabs.size();i++){
+        if (used[i]==-1 && input[0][i]!=-1){
+            for (auto it : input){
+                for (int j=0;j<tabs[i]->data.size();j++){
+                    it[i]=j;
+                    result.push_back(it);
+                }
+            }
+        }
+        swap(input, result);
+        result.clear();
+    }
+    return input;
+}
+
 ItemSet Searcher::conLogic(conditions_def *cur){
     if (cur->type){
         printf("error: '%s' can't be a condition\n", cur->to_str().c_str());
@@ -346,7 +448,8 @@ ItemSet Searcher::conLogic(conditions_def *cur){
     }
     if (cur->intv==7 || cur->intv==8){ // AND/OR
         ItemSet l=conLogic(cur->left), r=conLogic(cur->right);
-
+        l=ItemSetFill(ItemTuple_True, l);
+        r=ItemSetFill(ItemTuple_True, r);
         // this method is easy, but very slow
         l.insert(l.end(), r.begin(), r.end());
         std::sort(l.begin(),l.end());
