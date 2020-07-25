@@ -12,7 +12,12 @@ extern "C" int yywrap(){
 }
 
 int main(int argc, char **argv){
+	output_mode=0;
 	initDB();
+	if (argc>1){
+		freopen(argv[1],"r",stdin);
+		output_mode|=1;
+	}
 	hintCMD();
 	yyparse();
 	return 0;
@@ -62,7 +67,7 @@ statementline: statement ';'
 				hintCMD();
 			}
 
-statement: createsql | selectsql | exitsql | insertsql | %empty 
+statement: createsql | selectsql | exitsql | insertsql | dropsql | %empty 
 	| usestmt | savestmt
 
 usestmt: USE ID {
@@ -111,12 +116,16 @@ create_item: ID INT {
 		$$.extra=$4;
 	}
 
-create_items:  create_item { 
+create_items: create_item { 
 		$$ = new create_item_def({$1});
 	}
 	| create_items ',' create_item{
 		$$ = $1;
 		$$->emplace_back($3);
+	}
+
+dropsql: DROP TABLE ID {
+		
 	}
 
 insertsql: INSERT INTO ID VALUES '(' value_list ')'{
@@ -163,9 +172,9 @@ items: ID { $$ = new select_item_def({$1}); }
 comparator:		  '='     {$$ = 1;}
 	| '>'     {$$ = 2;}
 	| '<'     {$$ = 3;}
-	| ">="    {$$ = 4;}
-	| "<="    {$$ = 5;}
-	| "<>"    {$$ = 6;}
+	| '>' '=' {$$ = 4;}
+	| '<' '=' {$$ = 5;}
+	| '<' '>' {$$ = 6;}
 	| '!' '=' {$$ = 6;}
 
 condition_item: ID {

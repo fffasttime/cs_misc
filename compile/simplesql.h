@@ -57,11 +57,13 @@ struct conditions_def{
 /*SELECT * FROM tabel_list WHERE ...*/
 typedef vector<string> table_def;
 
+extern int output_mode;
 void hintCMD();
 vector<string> listDir(const char *path);
 void initDB();
 
 void createTable(char *name, create_item_def *crtitem);
+void dropTable(char *name);
 
 void createDatabase(char *name);
 void useDatabase(char *name);
@@ -88,7 +90,7 @@ private:
 	pair<int, int> findFieldName(char *name);
 public:
 	bool succeed;
-	
+
 	ItemSet result;
 	
 	Searcher(select_item_def *item, table_def *table, conditions_def *con_root);

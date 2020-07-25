@@ -29,7 +29,7 @@ Then every table have a table save its field info
 {'type':int, 'extra':int, 'name', (TODO)'foreign_key'}  
 
 # selection
-Here selection is simply enumerate all possible combinions, it's easy but very slow.
+Here selection is simply enumerate all possible combinions, it's easy but very slow.  
 Calcutations between tables clause " select * from some_table where a + b < c " can't be represented under this way.
 
 # test & debug  

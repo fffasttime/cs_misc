@@ -4,7 +4,10 @@
 #include <algorithm>
 DataBase db;
 
+int output_mode;
+
 void hintCMD(){
+    if (output_mode&1) return;
     if (db.loaded)
         std::cout<<db.name+"> ";
     else
@@ -108,6 +111,14 @@ void createTable(char *name, create_item_def *crtitem){
     db.tables.back().name=name;
     db.tables.back().loaded=true;
     db.updateMap();
+}
+
+void dropTable(char *name){
+    if (db.name_tab.count(name)==0){
+        printf_error("error: table '%s' does not exist\n", name);
+        return;
+    }
+
 }
 
 /**
@@ -228,11 +239,11 @@ void saveDatabase(){
 
 void exitSql(){
     if (db.loaded){
-        printf_info("info: Saving data\n");
+        printf_info("info: saving data\n");
         saveDatabase();
     }
+    printf_info("info: all data saved, exiting\n");
     exit(0);
-    printf_info("info: Successfully exited\n");
 }
 
 string conditions_def::to_str(){
@@ -333,8 +344,8 @@ void Searcher::showResult(){
         puts("");
         for (const auto &it:result){
             vc=0;
+            putchar('|');
             for (size_t i=0;i<tabs.size();i++){
-                putchar('|');
                 auto &tab=tabs[i];
                 for (size_t j=0;j<tab->field.fields.size();j++){
                     int offset=tab->field.offset[j];
@@ -346,8 +357,8 @@ void Searcher::showResult(){
                     vc++;
                     putchar('|');
                 }
-                puts("");
             }
+            puts("");
         }
         printf("found %zu items\n", result.size());
     }
@@ -534,14 +545,15 @@ ItemSet Searcher::conLogic(conditions_def *cur){
         ItemSet l=conLogic(cur->left), r=conLogic(cur->right);
         l=ItemSetFill(ItemTuple_True, l);
         r=ItemSetFill(ItemTuple_True, r);
-        // this solution is easy, but very slow
-        l.insert(l.end(), r.begin(), r.end());
         std::sort(l.begin(),l.end());
+        std::sort(r.begin(),r.end());
         auto it=std::unique(l.begin(),l.end());
-        if (cur->intv==7) //intersection
-            return ItemSet(l.begin(), it);
-        else //union
-            return ItemSet(it, l.end());
+        ItemSet result;
+        if (cur->intv==8) //union
+            std::set_union(l.begin(),l.end(),r.begin(),r.end(), std::back_inserter(result));
+        else //intersection
+            std::set_intersection(l.begin(),l.end(),r.begin(),r.end(), std::back_inserter(result));
+        return result;
     }
     return conCompare(cur); //not logic binary
 }

@@ -32,6 +32,7 @@ from   {return FROM;}
 int	   {return INT;}
 insert {return INSERT;}
 into   {return INTO;}
+or     {return OR;}
 save   {return SAVE;}
 select {return SELECT;}
 schema {return SCHEMA;}
@@ -48,10 +49,7 @@ where  {return WHERE;}
 [=] |
 [!] |
 [>] | 
-[<] |
-"<=" |
-">=" |
-"<>"   {return *yytext;}
+[<] {return *yytext;}
  
 {id}  {
     yylval.strval=strdup(yytext); ; 

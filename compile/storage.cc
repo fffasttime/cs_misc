@@ -45,7 +45,7 @@ void Table::freeData(){
 
 void Table::saveData(FILE *fo){
     printf_debug("debug: saving table '%s', %zu items\n", name.c_str(), data.size());
-    printf_debug("debug: field length=%d\n", field.length);
+    //printf_debug("debug: field length=%d\n", field.length);
     assert(loaded);
     for (PRecord_t p : data)
         if (p!=nullptr){
