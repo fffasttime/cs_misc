@@ -21,13 +21,16 @@ Metadata table always get full loaded in memory.
 ## database metadata  
 Each database have one table, always occupy the head of .db file.  
 First 64 Byte is metadata of full database  
-|DB_identification("SIMPLEDB") 10 byte | version 10 byte | other infomathon(reserved)|   
+|DB_identification("SIMPLEDB") 10 byte | version 10 byte | other infomathon(reserved)| number of tables|  
 Then a table lists ordinary tables in this database    
 {'name':char(32), 'count':int, 'count_field':int}  
 ## table matadata  
 Then every table have a table save its field info  
 {'type':int, 'extra':int, 'name', (TODO)'foreign_key'}  
 
+# selection
+Here selection is simply enumerate all possible combinions, it's easy but very slow.
+Calcutations between tables clause " select * from some_table where a + b < c " can't be represented under this way.
+
 # test & debug  
-testcase.cc tests implement of db.  
 sql interpreter should be tested by examples.  
