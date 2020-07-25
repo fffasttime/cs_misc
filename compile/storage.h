@@ -39,7 +39,7 @@ struct FieldCellInfo{
             // '\0' need one more byte to save
             return extra + 1;
         default:
-            fatal("fatal: error loading field type\n");
+            fatal("fatal: error loading field type %d, the file is broken?\n", int(type));
         }
     }
     FieldCellInfo(FieldType ft, string name):type(ft),name(name){}
@@ -54,6 +54,7 @@ struct FieldInfo{
 
     FieldInfo(const vector<FieldCellInfo> &__v):fields(__v){
         offset.resize(fields.size());
+        offset[0]=0;
         for (size_t i=1;i<offset.size();i++)
             offset[i]=offset[i-1]+fields[i-1].length();
         length=offset.back()+fields.back().length();
@@ -67,7 +68,6 @@ typedef char* PRecord_t;
 
 class Table{
 public:
-    int count;
     FieldInfo field;
     bool loaded;
     vector<PRecord_t> data;
@@ -84,6 +84,9 @@ public:
         return {data[line]+field.offset[field.name2fid[fieldname]]};
     }
     FieldReturn_t readof(int line, int offset){
+        #ifndef NODEBUG
+            assert(offset>=0 && offset<1<<16);
+        #endif
         return {data[line]+offset};
     }
     int getoffset(string fieldname){

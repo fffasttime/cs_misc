@@ -14,7 +14,7 @@
 
 ws [ \t]+
 string [\'][A-Za-z][A-Za-z0-9_]*[\']
-id [A-Za-z][A-Za-z0-9_]*
+id [A-Za-z_][A-Za-z0-9_]*
 number [0-9]+
 comment \-\-[^\n]*
 comment2 \/\*(\s|.)*?\*\/
@@ -59,7 +59,13 @@ where  {return WHERE;}
         *pc=tolower(*pc);
     return ID;
 }
-{string}  {yylval.strval=strdup(yytext); return STRING;}
+{string}  {
+    /*remove ''*/
+    yylval.strval=(char*)malloc(yyleng-1);
+    memcpy(yylval.strval,yytext+1,yyleng-1);
+    yylval.strval[yyleng-2]=0;
+    return STRING;
+}
 {number} {yylval.intval=atoi(yytext); return NUMBER;}
 {ws}
 {comment}

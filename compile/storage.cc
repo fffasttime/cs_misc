@@ -5,14 +5,13 @@
 void Table::loadData(FILE *fi, string _name, int _item_count){
     assert(!loaded);
     name = _name;
-    count = _item_count;
 
-    data.resize(count);
+    data.resize(_item_count);
     printf_debug("debug: loading table '%s', %d items\n", 
-        name.c_str(), count);
+        name.c_str(), _item_count);
 
     try{
-        for (int i=0;i<count;i++){
+        for (int i=0;i<_item_count;i++){
             data[i] = (PRecord_t)malloc(field.length);
             if (data[i]==nullptr){
                 printf_error("memory error: when creating table '%s', fail to allocate %d space", 
@@ -36,14 +35,17 @@ void Table::loadData(FILE *fi, string _name, int _item_count){
 
 void Table::freeData(){
     assert(loaded);
-    for (const auto &p : data)
-        if (p != nullptr)
+    for (auto &p : data)
+        if (p != nullptr){
             free(p);
+            p=nullptr;
+        }
     loaded=false;
 }
 
 void Table::saveData(FILE *fo){
-    printf_debug("debug: saving table '%s'\n", name.c_str());
+    printf_debug("debug: saving table '%s', %zu items\n", name.c_str(), data.size());
+    printf_debug("debug: field length=%d\n", field.length);
     assert(loaded);
     for (PRecord_t p : data)
         if (p!=nullptr){
@@ -52,8 +54,9 @@ void Table::saveData(FILE *fo){
 }
 
 Table::~Table(){
-    if (loaded) 
-        freeData();
+    //vector.push_back() call ~Table(), will free memory wrongly
+    //if (loaded) 
+    //    freeData();
 }
 
 /**
@@ -110,8 +113,10 @@ DataBase::~DataBase(){
 void DataBase::freeData(){
     assert(loaded);
     loaded=false;
-    tables.clear();
-    tbmeta.clear();
+    for (auto &tab:tables)
+        tab.freeData();
+    for (auto &tab:tbmeta)
+        tab.freeData();
     dbmeta.freeData();
     name_tab.clear();
 }
@@ -130,14 +135,15 @@ void DataBase::loadData_tables(FILE *fi, int table_count){
 
     // load ordinary data
     for (int i=0;i<table_count;i++){
+        // set field info
         vector<FieldCellInfo> fields;
-        
         Table &cur=tbmeta[i];
-        for (int j=0;j<cur.count;j++)
+        for (size_t j=0;j<cur.data.size();j++)
             fields.emplace_back((FieldType)cur.read(j,"type").int32(),
                             cur.read(j,"extra").int32(), 
                             cur.read(j,"name").nchar());
         tables.emplace_back(FieldInfo(fields));
+        // load data
         tables.back().loadData(fi, dbmeta.read(i,"name").nchar(), 
                         dbmeta.read(i,"count").int32());
     }
@@ -231,4 +237,6 @@ void DataBase::saveData(){
         tb.saveData(fo);
     for (Table &tb: tables)
         tb.saveData(fo);
+
+    fclose(fo);
 }

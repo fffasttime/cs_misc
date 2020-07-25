@@ -87,10 +87,7 @@ selectsql: SELECT '*' FROM tables {
 
 
 exitsql: EXIT {
-		printf_info("info: Saving data\n");
-		saveDatabase();
-		printf_info("info: Successfully exited\n");
-		exit(0);
+		exitSql();
 	}
 
 createsql: CREATE TABLE ID '(' create_items ')' {
@@ -123,11 +120,11 @@ create_items:  create_item {
 	}
 
 insertsql: INSERT INTO ID VALUES '(' value_list ')'{
-		insertRecord($3, $6, nullptr);
+		insertRecord_user($3, $6, nullptr);
 		delete $6;
 	}
 	| INSERT INTO ID '(' items ')' VALUES '(' value_list ')'{
-		insertRecord($3, $9, $5);
+		insertRecord_user($3, $9, $5);
 		delete $5;
 		delete $9;
 	}

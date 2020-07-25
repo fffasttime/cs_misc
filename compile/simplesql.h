@@ -66,9 +66,11 @@ void createTable(char *name, create_item_def *crtitem);
 void createDatabase(char *name);
 void useDatabase(char *name);
 void saveDatabase();
-void insertRecord(const char *name, value_def *val, select_item_def *selitem, bool nocheck = false);
+int insertRecord(const char *name, value_def *val, select_item_def *selitem, bool nocheck = false);
+void insertRecord_user(const char *name, value_def *val, select_item_def *selitem);
 
 void selection(select_item_def *item, table_def *table, conditions_def *con_root);
+void exitSql();
 
 /**
  * means the item position in table
@@ -84,7 +86,9 @@ private:
 	conditions_def *con_root;
 	void debug(conditions_def *cur, int dep = 0);
 	pair<int, int> findFieldName(char *name);
-public:                                               
+public:
+	bool succeed;
+	
 	ItemSet result;
 	
 	Searcher(select_item_def *item, table_def *table, conditions_def *con_root);
@@ -93,9 +97,11 @@ public:
 	ItemSet conLogic(conditions_def *cur);
 	ItemSet conCompare(conditions_def *cur);
 	ItemSet CompareTable0(conditions_def *left, conditions_def *right, int cmp_op);
-	//left should be a ID
+	//left should be an ID
 	ItemSet CompareTable1(conditions_def *left, conditions_def *right, int cmp_op);
 	ItemSet CompareTable2(conditions_def *left, conditions_def *right, int cmp_op);
+
+	void showResult();
 };
 
 #endif
