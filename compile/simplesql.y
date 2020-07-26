@@ -40,7 +40,7 @@ int main(int argc, char **argv){
 %error-verbose
 
 %token AND CREATE CHAR DATABASE DELETE DROP EXIT FROM INSERT 
-%token INT INTO SAVE SCHEMA SELECT TABLE USE VALUES WHERE
+%token INT INTO SAVE SET SCHEMA SELECT TABLE USE UPDATE VALUES WHERE
 %token <intval> NUMBER
 %token <strval> STRING ID
 
@@ -67,8 +67,8 @@ statementline: statement ';'
 				hintCMD();
 			}
 
-statement: createsql | selectsql | exitsql | insertsql | dropsql | %empty 
-	| usestmt | savestmt
+statement: createsql | selectsql | exitsql | insertsql | dropsql | deletesql | updatesql
+	| usestmt | savestmt | %empty 
 
 usestmt: USE ID {
 		useDatabase($2);
@@ -125,7 +125,17 @@ create_items: create_item {
 	}
 
 dropsql: DROP TABLE ID {
-		
+		dropTable($3);
+	}
+
+deletesql: DELETE FROM ID {
+		deleteItem($3, nullptr);
+	}
+	| DELETE '*' FROM ID{
+		deleteItem($4, nullptr);
+	}
+	| DELETE FROM ID WHERE conditions{
+		deleteItem($3, $5);
 	}
 
 insertsql: INSERT INTO ID VALUES '(' value_list ')'{
@@ -136,6 +146,13 @@ insertsql: INSERT INTO ID VALUES '(' value_list ')'{
 		insertRecord_user($3, $9, $5);
 		delete $5;
 		delete $9;
+	}
+
+updatesql: UPDATE ID SET ID '=' value{
+		updateItem($2, $4, $6, nullptr);
+	}
+	| UPDATE ID SET ID '=' value WHERE conditions{
+		updateItem($2, $4, $6, $8);
 	}
 
 value: NUMBER {
@@ -181,6 +198,14 @@ condition_item: ID {
 		$$ = new conditions_def;
 		$$->type = 3;
 		$$->strv = $1;
+		$$->tablev = nullptr;
+		$$->left = $$->right = nullptr;
+	}
+	| ID '.' ID{
+		$$ = new conditions_def;
+		$$->type = 3;
+		$$->strv = $3;
+		$$->tablev = $1;
 		$$->left = $$->right = nullptr;
 	}
 	| NUMBER {
@@ -207,17 +232,17 @@ condition: condition_item { $$ = $1; }
 
 conditions: condition { $$ = $1; }
 	|   '(' conditions ')' { $$ = $2; }
-	|   conditions AND condition {
-		$$ = new conditions_def;
-		$$->type = 0;
-		$$->intv = 7;
-		$$->left = $1;
-		$$->right = $3;	
-	}
-	|   conditions OR condition {
+	|   conditions OR conditions {
 		$$ = new conditions_def;
 		$$->type = 0;
 		$$->intv = 8;
+		$$->left = $1;
+		$$->right = $3;	
+	}
+	|   conditions AND conditions {
+		$$ = new conditions_def;
+		$$->type = 0;
+		$$->intv = 7;
 		$$->left = $1;
 		$$->right = $3;	
 	}

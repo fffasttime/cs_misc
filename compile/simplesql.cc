@@ -92,7 +92,7 @@ void createTable(char *name, create_item_def *crtitem){
     };
     insertRecord("__dbmeta", &values, nullptr);
     
-    //insert tbmeta
+    // insert tbmeta
     db.tbmeta.emplace_back(getTableMetaFieldInfo());
     db.tbmeta.back().name=string("__tbmeta_")+name;
     db.tbmeta.back().loaded=true;
@@ -106,7 +106,7 @@ void createTable(char *name, create_item_def *crtitem){
         insertRecord(db.tbmeta.back().name.c_str(), &values, nullptr);
     }
 
-    //insert table
+    // insert table
     db.tables.emplace_back(FieldInfo(fields));
     db.tables.back().name=name;
     db.tables.back().loaded=true;
@@ -118,7 +118,20 @@ void dropTable(char *name){
         printf_error("error: table '%s' does not exist\n", name);
         return;
     }
-
+    printf_info("info: dropping table '%s'\n", name);
+    for (size_t i=0;i<db.tables.size();i++)
+        if(db.tables[i].name==name){
+            // remove table
+            db.tables[i].freeData();
+            db.tables.erase(db.tables.begin()+i);
+            db.tbmeta[i].freeData();
+            db.tbmeta.erase(db.tbmeta.begin()+i);
+            // delete meta item
+            free(db.dbmeta.data[i]);
+            db.dbmeta.data.erase(db.dbmeta.data.begin()+i);
+            break;
+        }
+    db.updateMap();
 }
 
 /**
@@ -184,7 +197,7 @@ int insertRecord(const char *name, value_def *val, select_item_def *selitem, boo
         for (size_t i=0;i<selitem->size();i++){
             auto it=tb.field.name2fid.find((*selitem)[i]);
             if (it==tb.field.name2fid.end()){
-                printf_error("error: table '%s' has no field named '%s'\n", name, it);
+                printf_error("error: table '%s' has no field named '%s'\n", name, (*selitem)[i]);
                 return 1;
             }
             if (!checkValueField((*val)[i], fields[it->second]))
@@ -264,7 +277,12 @@ string conditions_def::to_str(){
     else if (type == 1){
         return std::to_string(intv);
     }
+    else if (type == 2){
+        return string("'")+strv+"'";
+    }
     else{
+        if (tablev!=nullptr)
+            return string(tablev)+"."+strv;
         return strv;
     }
 }
@@ -415,7 +433,27 @@ ItemSet Searcher::CompareTable0(conditions_def *left, conditions_def *right, int
 /**
  * @return pair<int,int> : <table id in Searcher.tab, field id in real table>
  */
-pair<int, int> Searcher::findFieldName(char *name){
+pair<int, int> Searcher::findFieldName(char *name, char *tabname){
+    if (tabname!=nullptr){
+        for (size_t i=0;i<tabs.size();i++)
+            if (tabs[i]->name==tabname){
+                if (tabs[i]->field.name2fid.count(name))
+                    return {(int)i, tabs[i]->field.name2fid[name]};
+                printf_error("error: in WHERE clause, table '%s' has no field named '%s'\n",
+                    tabname, name);
+                throw CommandException();
+            }
+        printf_error("error: in WHERE clause, table '%s' does not exist\n", tabname);
+        throw CommandException();
+    }
+    int cnt=0;
+    for (size_t i=0;i<tabs.size();i++)
+        if (tabs[i]->field.name2fid.count(name))
+            cnt++;
+    if (cnt>1){
+        printf_error("error: field name '%s' is conflict between tables\n", name);
+        throw CommandException();
+    }
     for (size_t i=0;i<tabs.size();i++){
         if (tabs[i]->field.name2fid.count(name))
             return {(int)i, tabs[i]->field.name2fid[name]};
@@ -425,7 +463,7 @@ pair<int, int> Searcher::findFieldName(char *name){
 }
 
 ItemSet Searcher::CompareTable1(conditions_def *left, conditions_def *right, int cmp_op){
-    auto id=findFieldName(left->strv);
+    auto id=findFieldName(left->strv, left->tablev);
     int tid=id.first;
     Table &tab=*tabs[tid];
     auto &field=tab.field.fields[id.second];
@@ -455,13 +493,13 @@ ItemSet Searcher::CompareTable1(conditions_def *left, conditions_def *right, int
 }
 
 ItemSet Searcher::CompareTable2(conditions_def *left, conditions_def *right, int cmp_op){
-    auto id1=findFieldName(left->strv);
+    auto id1=findFieldName(left->strv, left->tablev);
     int tid1=id1.first;
     Table &tab1=*tabs[tid1];
     auto &field1=tab1.field.fields[id1.second];
     int offset1=tab1.field.offset[id1.second];
 
-    auto id2=findFieldName(right->strv);
+    auto id2=findFieldName(right->strv, right->tablev);
     int tid2=id2.first;
     Table &tab2=*tabs[tid2];
     //auto &field2=tab2.field.fields[id2.second];
@@ -474,7 +512,7 @@ ItemSet Searcher::CompareTable2(conditions_def *left, conditions_def *right, int
         if(field1.type==FieldType::int32){
             int x=tab1.readof(i, offset1).int32();
             for (size_t j=0;j<tab2.data.size();j++){
-                int y=tab2.readof(i, offset2).int32();
+                int y=tab2.readof(j, offset2).int32();
                 if (compareint(x,y,cmp_op)){
                     auto ins=ItemTuple_True;
                     ins[tid1]=i;
@@ -486,7 +524,7 @@ ItemSet Searcher::CompareTable2(conditions_def *left, conditions_def *right, int
         else{
             char *x=tab1.readof(i, offset1).nchar();
             for (size_t j=0;j<tab2.data.size();j++){
-                char *y=tab2.readof(i, offset2).nchar();
+                char *y=tab2.readof(j, offset2).nchar();
                 if (comparestr(x,y,cmp_op)){
                     auto ins=ItemTuple_True;
                     ins[tid1]=i;
@@ -547,12 +585,13 @@ ItemSet Searcher::conLogic(conditions_def *cur){
         r=ItemSetFill(ItemTuple_True, r);
         std::sort(l.begin(),l.end());
         std::sort(r.begin(),r.end());
-        auto it=std::unique(l.begin(),l.end());
         ItemSet result;
         if (cur->intv==8) //union
             std::set_union(l.begin(),l.end(),r.begin(),r.end(), std::back_inserter(result));
         else //intersection
             std::set_intersection(l.begin(),l.end(),r.begin(),r.end(), std::back_inserter(result));
+        auto it=std::unique(result.begin(),result.end());
+        result.erase(it,result.end());
         return result;
     }
     return conCompare(cur); //not logic binary
@@ -562,4 +601,80 @@ void selection(select_item_def *item, table_def *table, conditions_def *con_root
     Searcher searcher(item, table, con_root);
     if (searcher.succeed)
         searcher.showResult();
+}
+
+void deleteItem(char *name, conditions_def *con_root){
+    if (!db.name_tab.count(name)){
+        printf_error("error: table '%s' does not exist\n", name);
+        return;
+    }
+    auto& tab=*db.name_tab[name];
+    if (con_root==nullptr){ //remove all
+        tab.freeData();
+        tab.loaded=true;
+        printf_info("info: deleting all %zu items\n", tab.data.size());
+        tab.data.clear();
+        //update count
+        for (size_t i=0;i<db.tables.size();i++)
+            if (db.tables[i].name==name){
+                db.dbmeta.read(i,"count").int32()=0;
+                break;
+            }
+        return;
+    }
+    vector<string> tabname({name});
+    Searcher searcher(nullptr, &tabname, con_root);
+
+    vector<PRecord_t> newdata;
+    vector<bool> removed;
+    removed.resize(tab.data.size());
+    for (auto& it:searcher.result)
+        removed[it[0]]=1;
+    for (size_t i=0;i<tab.data.size();i++){
+        if (removed[i])
+            free(tab.data[i]);
+        else
+            newdata.push_back(tab.data[i]);
+    }
+    printf_info("info: deleted %zu items, remain %zu items\n",
+        tab.data.size()-newdata.size(), newdata.size());
+
+    //update count
+    for (size_t i=0;i<db.tables.size();i++)
+        if (db.tables[i].name==name){
+            db.dbmeta.read(i,"count").int32()=newdata.size();
+            break;
+        }
+
+    newdata.swap(tab.data);
+}
+
+void updateItem(char *name, char *fname, value_def_unit val, conditions_def *con_root){
+    if (!db.name_tab.count(name)){
+        printf_error("error: table '%s' does not exist\n", name);
+        return;
+    }
+    auto& tab=*db.name_tab[name];
+    if (!tab.field.name2fid.count(fname)){
+        printf_error("error: field '%s' does not exist in table '%s'\n", fname, name);
+        return;
+    }
+    vector<string> tabname({name});
+    Searcher searcher(nullptr, &tabname, con_root);
+    int fid=tab.field.name2fid[fname];
+    int offset=tab.field.offset[fid];
+
+    if (!checkValueField(val, tab.field.fields[fid]))
+        return;
+
+    printf_info("info: updating %zu items\n", searcher.result.size());
+
+    if (tab.field.fields[fid].type==FieldType::int32){
+        for (auto& it:searcher.result)
+            tab.readof(it[0], offset).int32()=val.value.intval;
+    }
+    else{
+        for (auto& it:searcher.result)
+            strcpy(tab.readof(it[0],offset).nchar(), val.value.strval);
+    }
 }

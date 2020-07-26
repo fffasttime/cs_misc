@@ -14,16 +14,16 @@
 using std::vector;
 class CommandException:exception{};
 
+/* field info */
 struct create_item_def_unit{ 
-	/*field name*/
 	FieldType type;
 	int extra;  
 	char *name;
 };
-/*CREATE TABLE table_id (create_items_def)*/
+/* CREATE TABLE table_id (create_items_def) */
 typedef vector<create_item_def_unit> create_item_def;
 
-/* SELECT select_item_def FROM ...*/
+/* SELECT select_item_def FROM ... */
 typedef vector<string> select_item_def;
 
 union KeyValue{
@@ -49,6 +49,8 @@ struct conditions_def{
 	int intv;
 	/* STRING or ID*/
 	char *strv;	
+	/* extra id */
+	char *tablev;
 	conditions_def *left;
 	conditions_def *right;
 	string to_str();
@@ -72,6 +74,9 @@ int insertRecord(const char *name, value_def *val, select_item_def *selitem, boo
 void insertRecord_user(const char *name, value_def *val, select_item_def *selitem);
 
 void selection(select_item_def *item, table_def *table, conditions_def *con_root);
+void deleteItem(char *name, conditions_def *con_root);
+void updateItem(char *name, char *fname, value_def_unit val, conditions_def *con_root);
+
 void exitSql();
 
 /**
@@ -87,7 +92,7 @@ private:
 	select_item_def *projname;
 	conditions_def *con_root;
 	void debug(conditions_def *cur, int dep = 0);
-	pair<int, int> findFieldName(char *name);
+	pair<int, int> findFieldName(char *name, char *tabname);
 public:
 	bool succeed;
 

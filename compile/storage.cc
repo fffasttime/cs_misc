@@ -115,8 +115,10 @@ void DataBase::freeData(){
     loaded=false;
     for (auto &tab:tables)
         tab.freeData();
+    tables.clear();
     for (auto &tab:tbmeta)
         tab.freeData();
+    tbmeta.clear();
     dbmeta.freeData();
     name_tab.clear();
 }
@@ -153,10 +155,7 @@ void DataBase::loadData_tables(FILE *fi, int table_count){
  * 'use <schema>' will load a exist database
  */
 void DataBase::loadData(string _path, string _name){
-    path=_path;
-    name=_name;
-    
-    string fullpath=path+name+".db";
+    string fullpath=_path+_name+".db";
     
     FILE *fi=fopen(fullpath.c_str(), "rb");
     
@@ -172,8 +171,15 @@ void DataBase::loadData(string _path, string _name){
     }
 
     // start loading
-    if (loaded) freeData();
-    printf_debug("debug: schema '%s' load, %d tables\n", name.c_str(), table_count);
+    if (loaded){
+        printf_info("debug: unloading schema '%s'\n", name.c_str());
+        freeData();
+    }
+
+    path=_path;
+    name=_name;
+
+    printf_debug("debug: loading schema '%s', %d tables\n", name.c_str(), table_count);
 
     try{
         loadData_tables(fi, table_count);

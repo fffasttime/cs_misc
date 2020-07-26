@@ -13,7 +13,7 @@
 /*%option c++*/
 
 ws [ \t]+
-string [\'][A-Za-z][A-Za-z0-9_]*[\']
+string [\'].*[\']
 id [A-Za-z_][A-Za-z0-9_]*
 number [0-9]+
 comment \-\-[^\n]*
@@ -33,14 +33,17 @@ int	   {return INT;}
 insert {return INSERT;}
 into   {return INTO;}
 or     {return OR;}
+set    {return SET;}
 save   {return SAVE;}
 select {return SELECT;}
 schema {return SCHEMA;}
 table  {return TABLE;}
+update {return UPDATE;}
 use    {return USE;}
 values {return VALUES;}
 where  {return WHERE;}
 
+[.] |
 [;] | 
 [(] | 
 [)] |
@@ -48,7 +51,7 @@ where  {return WHERE;}
 [*] |
 [=] |
 [!] |
-[>] | 
+[>] |
 [<] {return *yytext;}
  
 {id}  {
