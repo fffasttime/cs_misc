@@ -59,6 +59,50 @@ Table::~Table(){
     //    freeData();
 }
 
+void Table::showData(){
+    vector<int> spaces;
+    //count space
+    for (size_t i=0;i<field.fields.size();i++)
+        spaces.push_back(field.fields[i].name.length());
+    int vc;
+    for (size_t i=0;i<data.size();i++){
+        vc=0;
+        for (size_t j=0;j<field.fields.size();j++){
+            int offset=field.offset[j];
+            if (field.fields[j].type==FieldType::int32)
+                spaces[vc]=std::max(spaces[vc], 
+                    int(std::to_string(readof(i, offset).int32()).size()));
+            else
+                spaces[vc]=std::max(spaces[vc], int(strlen(readof(i, offset).nchar())));
+            vc++;
+        }
+    }
+    //show
+    vc=0;
+    putchar('|');
+    for (size_t j=0;j<field.fields.size();j++){
+        printf("%*s", spaces[vc], field.fields[j].name.c_str());
+        vc++;
+        putchar('|');
+    }
+    puts("");
+    for (size_t i=0;i<data.size();i++){
+        vc=0;
+        putchar('|');
+        for (size_t j=0;j<field.fields.size();j++){
+            int offset=field.offset[j];
+            if (field.fields[j].type==FieldType::int32)
+                printf("%*d",spaces[vc], readof(i, offset).int32());
+            else
+                printf("%*s",spaces[vc], readof(i, offset).nchar());
+            putchar('|');
+            vc++;
+        }
+        puts("");
+    }
+    printf("found %zu items\n", data.size());
+}
+
 /**
  * read first 64 bytes
  */

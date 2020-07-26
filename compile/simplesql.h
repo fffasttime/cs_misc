@@ -23,8 +23,13 @@ struct create_item_def_unit{
 /* CREATE TABLE table_id (create_items_def) */
 typedef vector<create_item_def_unit> create_item_def;
 
+struct select_item_def_unit{ 
+	char *name;
+	char *tabname;
+	char *rename;
+};
 /* SELECT select_item_def FROM ... */
-typedef vector<string> select_item_def;
+typedef vector<select_item_def_unit> select_item_def;
 
 union KeyValue{
 	int intval;
@@ -109,6 +114,7 @@ public:
 	ItemSet CompareTable2(conditions_def *left, conditions_def *right, int cmp_op);
 
 	void showResult();
+	Table *doProjection();
 };
 
 #endif

@@ -22,6 +22,7 @@ comment2 \/\*(\s|.)*?\*\/
 %%
 
 and    {return AND;}
+as     {return AS;}
 char   {return CHAR;}
 create {return CREATE;}
 delete {return DELETE;}

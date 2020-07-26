@@ -53,6 +53,11 @@ select * from info, score where name='fff' -- name conflict error
 select * from info, score where info.name=score.name -- 7 items
 select * from info, score where info.name=score.name and (score>2 and score<=99) -- 3 items
 
+select name,age,score from info, score where info.name=score.name -- name conflict error
+select age,score,info.name from info, score where info.name=score.name  -- 7 items
+
+select age,score,info.name as 'this is a new name' from info, score where info.name=score.name  -- 7 items
+
 delete from test where tt<5;
 delete from test
 insert into test (tt) values (4);

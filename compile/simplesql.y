@@ -31,6 +31,7 @@ int main(int argc, char **argv){
 	create_item_def *crtitemval;
 	create_item_def_unit crtitemvalu;
 	select_item_def *selitemval;
+	select_item_def_unit selitenvalu;
 	value_def *valdef;
 	value_def_unit valdefu;
 	conditions_def *conval;
@@ -39,7 +40,7 @@ int main(int argc, char **argv){
 
 %error-verbose
 
-%token AND CREATE CHAR DATABASE DELETE DROP EXIT FROM INSERT 
+%token AND AS CREATE CHAR DATABASE DELETE DROP EXIT FROM INSERT 
 %token INT INTO SAVE SET SCHEMA SELECT TABLE USE UPDATE VALUES WHERE
 %token <intval> NUMBER
 %token <strval> STRING ID
@@ -50,6 +51,7 @@ int main(int argc, char **argv){
 %type <crtitemval> create_items
 %type <conval> condition conditions condition_item
 %type <selitemval> items
+%type <selitenvalu> item
 %type <tbval> tables
 %type <valdefu> value
 %type <valdef> value_list
@@ -180,13 +182,30 @@ tables:	ID {
 		$$->emplace_back($3);			
 	}
 
-items: ID { $$ = new select_item_def({$1}); }
-	| items ',' ID { 
+item: ID{
+		$$.tabname = nullptr;
+		$$.name = $1;
+		$$.rename = nullptr;
+	}
+	| ID '.' ID{
+		$$.tabname = $1;
+		$$.name = $3;
+		$$.rename = nullptr;
+	}
+	| ID '.' ID AS STRING{
+		$$.tabname = $1;
+		$$.name = $3;
+		$$.rename = $5;
+	}
+
+items: item { $$ = new select_item_def({$1}); }
+	| items ',' item { 
 		$$ = $1;
 		$$->emplace_back($3);
 	}
 
-comparator:		  '='     {$$ = 1;}
+comparator:		  
+	  '='     {$$ = 1;}
 	| '>'     {$$ = 2;}
 	| '<'     {$$ = 3;}
 	| '>' '=' {$$ = 4;}

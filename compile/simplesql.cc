@@ -195,7 +195,7 @@ int insertRecord(const char *name, value_def *val, select_item_def *selitem, boo
                 val->size(), selitem->size());
         }
         for (size_t i=0;i<selitem->size();i++){
-            auto it=tb.field.name2fid.find((*selitem)[i]);
+            auto it=tb.field.name2fid.find((*selitem)[i].name);
             if (it==tb.field.name2fid.end()){
                 printf_error("error: table '%s' has no field named '%s'\n", name, (*selitem)[i]);
                 return 1;
@@ -217,7 +217,7 @@ int insertRecord(const char *name, value_def *val, select_item_def *selitem, boo
     }
     else{
         for (size_t i=0;i<selitem->size();i++)
-            writeValueField(record, tb.field.name2fid[(*selitem)[i]], tb, (*val)[i]);
+            writeValueField(record, tb.field.name2fid[(*selitem)[i].name], tb, (*val)[i]);
     }
     tb.data.push_back(record);
     return 0;
@@ -322,63 +322,53 @@ Searcher::Searcher(select_item_def *item, table_def *table, conditions_def *con_
     succeed=1;
 }
 
-void Searcher::showResult(){
-    vector<int> spaces;
-    if (projname==nullptr){
-        //counting space
-        for (size_t i=0;i<tabs.size();i++){
-            auto &tab=tabs[i];
-            for (size_t j=0;j<tab->field.fields.size();j++)
-                spaces.push_back(tab->field.fields[j].name.length());
+Table *Searcher::doProjection(){
+    try{
+        vector<FieldCellInfo> fields;
+        vector<pair<int, int>> fids; 
+        if (projname!=nullptr){
+            fids.reserve(projname->size());
+            for (auto &it : *projname){
+                auto res=findFieldName(it.name, it.tabname);
+                auto &tab=tabs[res.first];
+                auto &fid=tab->field.fields[res.second];
+                fids.emplace_back(res.first, res.second);
+                if (it.rename==nullptr)
+                    fields.push_back(FieldCellInfo(fid.type, fid.extra, fid.name));
+                else
+                    fields.push_back(FieldCellInfo(fid.type, fid.extra, it.rename));
+            }
         }
-        int vc;
-        for (const auto &it:result){
-            vc=0;
-            for (size_t i=0;i<tabs.size();i++){
-                auto &tab=tabs[i];
+        else{
+            int i=0;
+            for (auto &tab:tabs){
                 for (size_t j=0;j<tab->field.fields.size();j++){
-                    int offset=tab->field.offset[j];
-                    auto &field=tab->field.fields[j];
-                    if (field.type==FieldType::int32)
-                        spaces[vc]=std::max(spaces[vc], 
-                            int(std::to_string(tab->readof(it[i], offset).int32()).size()));
-                    else
-                        spaces[vc]=std::max(spaces[vc], int(strlen(tab->readof(it[i], offset).nchar())));
-                    vc++;
+                    auto &fid=tab->field.fields[j];
+                    fids.emplace_back(i,j);
+                    fields.push_back(FieldCellInfo(fid.type, fid.extra, fid.name));
                 }
+                i++;
             }
         }
-        //show
-        vc=0;
-        putchar('|');
-        for (size_t i=0;i<tabs.size();i++){
-            auto &tab=tabs[i];
-            for (size_t j=0;j<tab->field.fields.size();j++){
-                printf("%*s", spaces[vc], tab->field.fields[j].name.c_str());
-                vc++;
-                putchar('|');
-            }
+        Table *result_table=new Table(fields);
+        auto &tab=*result_table;
+        tab.loaded=true;
+        tab.data.reserve(result.size());
+        // copy data to new table
+        // TODO : redesign it
+        for (auto &it:result){
+            auto line=(PRecord_t)malloc(tab.field.length);
+            for (size_t i=0;i<fids.size();i++)
+                memcpy(line+tab.field.offset[i], 
+                tabs[fids[i].first]->data[it[fids[i].first]]+
+                    tabs[fids[i].first]->field.offset[fids[i].second],
+                tab.field.fields[i].length());
+            tab.data.push_back(line);
         }
-        puts("");
-        for (const auto &it:result){
-            vc=0;
-            putchar('|');
-            for (size_t i=0;i<tabs.size();i++){
-                auto &tab=tabs[i];
-                for (size_t j=0;j<tab->field.fields.size();j++){
-                    int offset=tab->field.offset[j];
-                    auto &field=tab->field.fields[j];
-                    if (field.type==FieldType::int32)
-                        printf("%*d",spaces[vc], tab->readof(it[i], offset).int32());
-                    else
-                        printf("%*s",spaces[vc], tab->readof(it[i], offset).nchar());
-                    vc++;
-                    putchar('|');
-                }
-            }
-            puts("");
-        }
-        printf("found %zu items\n", result.size());
+        return result_table;
+    }
+    catch (CommandException &e){
+        return nullptr;
     }
 }
 
@@ -599,8 +589,14 @@ ItemSet Searcher::conLogic(conditions_def *cur){
 
 void selection(select_item_def *item, table_def *table, conditions_def *con_root){
     Searcher searcher(item, table, con_root);
-    if (searcher.succeed)
-        searcher.showResult();
+    if (searcher.succeed){
+        Table *tab = searcher.doProjection();
+        if (tab!=nullptr){
+            tab->showData();
+            tab->freeData();
+            free(tab);
+        }
+    }
 }
 
 void deleteItem(char *name, conditions_def *con_root){

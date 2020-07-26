@@ -76,7 +76,8 @@ public:
     void loadData(FILE *fi, string _name, int _item_count);
     void saveData(FILE *fo);
     void freeData();
-
+    void showData();
+    
     FieldReturn_t read(int line, string fieldname){
         #ifndef NODEBUG
             assert(field.name2fid.count(fieldname));
@@ -95,6 +96,22 @@ public:
 
     Table(const FieldInfo &_field):field(_field),loaded(false){}
     ~Table();
+};
+
+/* Read-only version*/
+class TableSt{
+    FieldInfo field;
+    vector<PRecord_t> data;
+    PRecord_t data0;
+    TableSt(const FieldInfo &_field, int lines):field(_field){
+        data0 = (PRecord_t)malloc(lines*field.length);
+        data.reserve(lines);
+        for (int i=0;i<lines;i++)
+            data.push_back(data0+i*field.length);
+    }
+    ~TableSt(){
+        free(data0);
+    }
 };
 
 FieldInfo getDBMetaFieldInfo();
