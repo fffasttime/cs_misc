@@ -30,7 +30,7 @@ struct select_item_def_unit{
 	char *rename;
 };
 /* SELECT select_item_def FROM ... */
-typedef vector<select_item_def_unit> select_item_def;
+typedef vector<select_item_def_unit*> select_item_def;
 
 union KeyValue{
 	int intval;

@@ -29,14 +29,14 @@ create table tb2(name CHAR(10), content CHAR(10))
 insert into tb2 values('comment', '/**/');
 insert into tb2 values('comment', '--f');;
 insert into tb2 values('id', 's1');;
-insert into tb2 values('id', 'sssss');
+insert into tb2 values('id', 'aaaa');
 
 select content from tb2 where name='comment' -- 2 items
 select * from tb where x in (select content from tb2 where name='comment'); -- field not found
 select * from tb where name in 3; -- syntax error
-select * from tb where name in (select content from tb2 where name='comment');
-select * from tb where (select content from tb2) > name -- error
-select * from tb where name in (select content from tb2);
-select * from tb where name in (select * from tb2);
+select * from tb where name in (select content from tb2 where name='comment'); -- 2 items
+select * from tb where (select content from tb2) > name -- syntax error
+select * from tb where name in (select content from tb2); -- 3 items
+select * from tb where name in (select * from tb2); -- error, sub selection has more than 1 colunm
 
 save

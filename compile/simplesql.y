@@ -241,10 +241,13 @@ item: ID{
 		free($5);
 	}
 
-items: item { $$ = new select_item_def; $$->push_back(*$1); printf("%p!",$$);}
+items: item { 
+		$$ = new select_item_def; 
+		$$->push_back($1); 
+	}
 	| items ',' item { 
 		$$ = $1;
-		$$->push_back(*$3);
+		$$->push_back($3);
 	}
 
 comparator:		  
@@ -301,8 +304,8 @@ condition_item: ID {
 		$$->left = $$->right = nullptr;
 	}
 	| '(' subselectsql ')' {
-		$$->type = 7;
-		printf("%p\n",&($$->type));
+		$$ = new conditions_def;
+		$$->type = 5;
 		$$->subselect = $2;
 		$$->left = $$->right = nullptr;
 	}

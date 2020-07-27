@@ -270,12 +270,12 @@ int insertRecord(const char *name, value_def *val, select_item_def *selitem, boo
     }
     else{
         if (selitem->size()!=val->size()){
-            printf("error: number mismatch, %zu values but %zu fields\n",
+            printf_error("error: number mismatch, %zu values but %zu fields\n",
                 val->size(), selitem->size());
         }
         vector<bool> vis(tb.field.fields.size(), false);
         for (size_t i=0;i<selitem->size();i++){
-            auto it=tb.field.name2fid.find((*selitem)[i].name);
+            auto it=tb.field.name2fid.find((*selitem)[i]->name);
             if (it==tb.field.name2fid.end()){
                 printf_error("error: table '%s' has no field named '%s'\n", name, (*selitem)[i]);
                 return 1;
@@ -306,7 +306,7 @@ int insertRecord(const char *name, value_def *val, select_item_def *selitem, boo
     else{
         vector<bool> vis(tb.field.fields.size(), false);
         for (size_t i=0;i<selitem->size();i++){
-            int fid=tb.field.name2fid[(*selitem)[i].name];
+            int fid=tb.field.name2fid[(*selitem)[i]->name];
             writeValueField(record, fid, tb, (*val)[i]);
             vis[fid]=true;
         }
@@ -409,7 +409,7 @@ Searcher::Searcher(select_item_def *item, table_def *table, conditions_def *con_
     for (const auto &tabname: *table){
         auto it=db.name_tab.find(tabname);
         if (it==db.name_tab.end()){
-            printf("error: no table named '%s'\n", tabname.c_str());
+            printf_error("error: no table named '%s'\n", tabname.c_str());
             return;
         }
         tabs.push_back(it->second);
@@ -427,21 +427,20 @@ Searcher::Searcher(select_item_def *item, table_def *table, conditions_def *con_
 }
 
 Table *Searcher::doProjection(){
-    printf("%p\n", projname);fflush(stdout);
     try{
         vector<FieldCellInfo> fields;
         vector<pair<int, int>> fids; 
         if (projname!=nullptr){
             fids.reserve(projname->size());
             for (auto &it : *projname){
-                auto res=findFieldName(it.name, it.tabname);
+                auto res=findFieldName(it->name, it->tabname);
                 auto &tab=tabs[res.first];
                 auto &fid=tab->field.fields[res.second];
                 fids.emplace_back(res.first, res.second);
-                if (it.rename==nullptr)
+                if (it->rename==nullptr)
                     fields.push_back(FieldCellInfo(fid.type, fid.extra, fid.name));
                 else
-                    fields.push_back(FieldCellInfo(fid.type, fid.extra, it.rename));
+                    fields.push_back(FieldCellInfo(fid.type, fid.extra, it->rename));
             }
         }
         else{
@@ -592,7 +591,7 @@ ItemSet Searcher::CompareTable1(conditions_def *left, conditions_def *right, int
             else if (right->type==4)
                 y=right->floatv;
             else{
-                printf("error: compare type mismatch\n");
+                printf_error("error: compare type mismatch\n");
                 throw CommandException();
             }
             if (comparefloat(x, y,cmp_op)){
@@ -640,7 +639,7 @@ ItemSet Searcher::CompareTable2(conditions_def *left, conditions_def *right, int
                 if (field2.type==FieldType::int32) y=tab2.readof(i, offset2).int32();
                 else if (field2.type==FieldType::Float) y=tab2.readof(i, offset2).float32();
                 else{
-                    printf("error: compare type mismatch\n");
+                    printf_error("error: compare type mismatch\n");
                     throw CommandException();
                 }
                 if (comparefloat(x,y,cmp_op)){
@@ -653,7 +652,7 @@ ItemSet Searcher::CompareTable2(conditions_def *left, conditions_def *right, int
         }
         else{
             if (field2.type!=FieldType::nchar){
-                printf("error: compare type mismatch\n");
+                printf_error("error: compare type mismatch\n");
                 throw CommandException();
             }
             char *x=tab1.readof(i, offset1).nchar();
@@ -679,10 +678,10 @@ ItemSet Searcher::conTableIn(conditions_def *left, conditions_def *right){
         printf_error("error: expecting a field name before IN\n");
         throw CommandException();
     }
-    /*if (right->type!=5){
+    if (right->type!=5){
         printf_error("error: expecting a table after IN\n");
         throw CommandException();
-    }*/
+    }
     auto searcher=right->subselect;
     if (!searcher->succeed){
         free(searcher);
@@ -716,7 +715,7 @@ ItemSet Searcher::conTableIn(conditions_def *left, conditions_def *right){
         std::set<string> cur;
         for (size_t i=0;i<tab2->data.size();i++)
             cur.emplace(tab2->readof(i,0).nchar());
-        for (size_t i=0;i<tab2->data.size();i++)
+        for (size_t i=0;i<tab.data.size();i++)
             if (cur.count(tab.readof(i,offset).nchar())){
                 auto ins=ItemTuple_True;
                 ins[tid]=i;
@@ -727,7 +726,7 @@ ItemSet Searcher::conTableIn(conditions_def *left, conditions_def *right){
         std::set<float> cur;
         for (size_t i=0;i<tab2->data.size();i++)
             cur.insert(tab2->readof(i,0).float32());
-        for (size_t i=0;i<tab2->data.size();i++)
+        for (size_t i=0;i<tab.data.size();i++)
             if (cur.count(tab.readof(i,offset).float32())){
                 auto ins=ItemTuple_True;
                 ins[tid]=i;
@@ -738,7 +737,7 @@ ItemSet Searcher::conTableIn(conditions_def *left, conditions_def *right){
         std::set<int> cur;
         for (size_t i=0;i<tab2->data.size();i++)
             cur.insert(tab2->readof(i,0).int32());
-        for (size_t i=0;i<tab2->data.size();i++)
+        for (size_t i=0;i<tab.data.size();i++)
             if (cur.count(tab.readof(i,offset).int32())){
                 auto ins=ItemTuple_True;
                 ins[tid]=i;
@@ -762,11 +761,15 @@ ItemSet Searcher::conTableIn(conditions_def *left, conditions_def *right){
 
 ItemSet Searcher::conCompare(conditions_def *cur){
     if (cur->type){
-        printf("error: '%s' can't be a condition\n", cur->to_str().c_str());
+        printf_error("error: '%s' can't be a condition\n", cur->to_str().c_str());
         throw CommandException();
     }
     if (cur->intv==9){
         return conTableIn(cur->left, cur->right);
+    }
+    if (cur->right->type==5 || cur->left->type==5){
+        printf_error("syntax error: SELECT clause can't be here\n");
+        throw CommandException();
     }
     if (cur->left->type == 3 && cur->right->type == 3){
         return CompareTable2(cur->left, cur->right, cur->intv);
@@ -802,7 +805,7 @@ ItemSet Searcher::ItemSetFill(ItemTuple used, ItemSet input){
 
 ItemSet Searcher::conLogic(conditions_def *cur){
     if (cur->type){
-        printf("error: '%s' can't be a condition\n", cur->to_str().c_str());
+        printf_error("error: '%s' can't be a condition\n", cur->to_str().c_str());
         throw CommandException();
     }
     if (cur->intv==7 || cur->intv==8){ // AND/OR
