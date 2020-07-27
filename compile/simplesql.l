@@ -13,7 +13,7 @@
 /*%option c++*/
 
 ws [ \t]+
-string [\'].*?[\']
+string [\'][^\']*[\']
 id [A-Za-z_][A-Za-z0-9_]*
 number (\-|\+)?[0-9]+
 float (\-|\+)?[0-9]+\.[0-9]*
@@ -63,7 +63,7 @@ where  {return WHERE;}
 [<] {return *yytext;}
  
 {id}  {
-    yylval.strval=strdup(yytext); ; 
+    yylval.strval=strdup(yytext);
     for (char *pc=yylval.strval;*pc;pc++)
         *pc=tolower(*pc);
     return ID;

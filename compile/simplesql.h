@@ -48,11 +48,11 @@ typedef vector<value_def_unit> value_def;
 class Searcher;
 /*codition binary tree node type*/
 struct conditions_def{
-	/* binary_op:0  NUMBER:1 STRING:2 id:3 */	
+	/* binary_op:0  NUMBER:1 STRING:2 ID:3 FLOAT:4 SELECTION:5*/	
 	int type;  
 	/** 
 	 * NUMBER or cmp_op_id 
-	 * '=':1 | '>':2 | '<':3 | '>=':4 | '<=':5 | '!=':6 | 'AND':7 | 'OR':8 
+	 * '=':1 | '>':2 | '<':3 | '>=':4 | '<=':5 | '!=':6 | 'AND':7 | 'OR':8 | 'IN':9
 	 */	
 	int intv;
 	/* STRING or ID*/
@@ -112,6 +112,7 @@ public:
 	Searcher(select_item_def *item, table_def *table, conditions_def *con_root);
 	ItemSet search(conditions_def *cur);
 	ItemSet ItemSetFill(ItemTuple used, ItemSet input);
+	ItemSet conTableIn(conditions_def *left, conditions_def *right);
 	ItemSet conLogic(conditions_def *cur);
 	ItemSet conCompare(conditions_def *cur);
 	ItemSet CompareTable0(conditions_def *left, conditions_def *right, int cmp_op);

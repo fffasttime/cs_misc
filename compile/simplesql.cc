@@ -1,4 +1,5 @@
 #include "simplesql.h"
+#include <set>
 #include <dirent.h> //file system
 #include <iostream>
 #include <algorithm>
@@ -366,7 +367,8 @@ string conditions_def::to_str(){
         case 6: return "!=";
         case 7: return "AND";
         case 8: return "OR";
-        default: fatal("?\n");
+        case 9: return "IN";
+        default: fatal("fatal: unknown op %d in function %s\n", intv, __func__);
         }
     }
     else if (type == 1){
@@ -378,11 +380,15 @@ string conditions_def::to_str(){
     else if (type == 4){
         return std::to_string(floatv);
     }
-    else{
+    else if (type == 3){
         if (tablev!=nullptr)
             return string(tablev)+"."+strv;
         return strv;
     }
+    else if (type == 5){
+        return "<sub selection>";
+    }
+    return "error-type";
 }
 
 void Searcher::debug(conditions_def *cur, int dep){
@@ -421,6 +427,7 @@ Searcher::Searcher(select_item_def *item, table_def *table, conditions_def *con_
 }
 
 Table *Searcher::doProjection(){
+    printf("%p\n", projname);fflush(stdout);
     try{
         vector<FieldCellInfo> fields;
         vector<pair<int, int>> fids; 
@@ -481,7 +488,7 @@ bool compareint(int x, int y, int cmp_op){
     case 6: return x!=y;
     default: ;
     }
-    fatal("?\n");
+    fatal("fatal: interneral error, cmp_op=%d in function compareint\n", cmp_op);
 }
 bool comparefloat(float x, float y, int cmp_op){
     switch (cmp_op)
@@ -494,7 +501,7 @@ bool comparefloat(float x, float y, int cmp_op){
     case 6: return x!=y;
     default: ;
     }
-    fatal("?\n");
+    fatal("fatal: interneral error, cmp_op=%d in function comparefloat\n", cmp_op);
 }
 bool comparestr(char *x, char *y, int cmp_op){
     int ret=strcmp(x, y);
@@ -507,7 +514,7 @@ bool comparestr(char *x, char *y, int cmp_op){
     case 5: return ret<=0;
     case 6: return ret;
     }
-    fatal("?\n");
+    fatal("fatal: interneral error, cmp_op=%d in function comparestr\n", cmp_op);
 }
 
 const ItemTuple ItemTuple_True={-1, -1, -1, -1, -1, -1};
@@ -664,10 +671,102 @@ ItemSet Searcher::CompareTable2(conditions_def *left, conditions_def *right, int
     return result;
 }
 
+/**
+ * @brief 'WHERE <field> IN (sub_selection)' process
+*/
+ItemSet Searcher::conTableIn(conditions_def *left, conditions_def *right){
+    if (left->type!=3){
+        printf_error("error: expecting a field name before IN\n");
+        throw CommandException();
+    }
+    /*if (right->type!=5){
+        printf_error("error: expecting a table after IN\n");
+        throw CommandException();
+    }*/
+    auto searcher=right->subselect;
+    if (!searcher->succeed){
+        free(searcher);
+        throw CommandException();
+    }
+    auto tab2=searcher->doProjection();
+    if (tab2==nullptr){
+        free(searcher);
+        throw CommandException();
+    }
+    auto id=findFieldName(left->strv, left->tablev);
+    int tid=id.first;
+    Table &tab=*tabs[tid];
+    auto &field=tab.field.fields[id.second];
+    int offset=tab.field.offset[id.second];
+
+    ItemSet result;
+    try{
+    
+    if(tab2->field.fields.size()>1){
+        printf_error("error: sub selection result has more than 1 column\n");
+        throw CommandException();
+    }
+    if(tab2->field.fields[0].type!=field.type){
+        printf_error("error: field type mismatch between '%s' IN <sub selection>\n",
+            field.name.c_str());
+        
+        throw CommandException();
+    }
+    if(field.type==FieldType::nchar){
+        std::set<string> cur;
+        for (size_t i=0;i<tab2->data.size();i++)
+            cur.emplace(tab2->readof(i,0).nchar());
+        for (size_t i=0;i<tab2->data.size();i++)
+            if (cur.count(tab.readof(i,offset).nchar())){
+                auto ins=ItemTuple_True;
+                ins[tid]=i;
+                result.emplace_back(ins);
+            }
+    }
+    else if(field.type==FieldType::Float){
+        std::set<float> cur;
+        for (size_t i=0;i<tab2->data.size();i++)
+            cur.insert(tab2->readof(i,0).float32());
+        for (size_t i=0;i<tab2->data.size();i++)
+            if (cur.count(tab.readof(i,offset).float32())){
+                auto ins=ItemTuple_True;
+                ins[tid]=i;
+                result.emplace_back(ins);
+            }
+    }
+    else{
+        std::set<int> cur;
+        for (size_t i=0;i<tab2->data.size();i++)
+            cur.insert(tab2->readof(i,0).int32());
+        for (size_t i=0;i<tab2->data.size();i++)
+            if (cur.count(tab.readof(i,offset).int32())){
+                auto ins=ItemTuple_True;
+                ins[tid]=i;
+                result.emplace_back(ins);
+            }
+    }
+
+    }
+    catch (CommandException &e){
+        tab2->freeData();
+        free(tab2);
+        free(searcher);
+        throw e;
+    }
+
+    tab2->freeData();
+    free(tab2);
+    free(searcher);
+    return result;
+}
+
 ItemSet Searcher::conCompare(conditions_def *cur){
     if (cur->type){
         printf("error: '%s' can't be a condition\n", cur->to_str().c_str());
         throw CommandException();
+    }
+    if (cur->intv==9){
+        return conTableIn(cur->left, cur->right);
     }
     if (cur->left->type == 3 && cur->right->type == 3){
         return CompareTable2(cur->left, cur->right, cur->intv);

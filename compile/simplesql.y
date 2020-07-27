@@ -32,7 +32,7 @@ int main(int argc, char **argv){
 	create_item_def *crtitemval;
 	create_item_def_unit crtitemvalu;
 	select_item_def *selitemval;
-	select_item_def_unit selitenvalu;
+	select_item_def_unit *selitenvalu;
 	value_def *valdef;
 	value_def_unit valdefu;
 	conditions_def *conval;
@@ -186,7 +186,8 @@ value: NUMBER {
 		$$.type = FieldType::int32;
 	}
 	| STRING {
-		$$.value.strval = $1;
+		$$.value.strval = strdup($1);
+		free($1);
 		$$.type = FieldType::nchar;
 	}
 	| FLOATVAL {
@@ -206,33 +207,44 @@ value_list: value {
 	}
 
 tables:	ID {
-		$$ = new table_def({$1});
+		$$ = new table_def({strdup($1)});
+		free($1);
 	}
 	| tables ',' ID {
 		$$ = $1;
-		$$->emplace_back($3);			
+		$$->emplace_back(strdup($3));
+		free($3);			
 	}
 
 item: ID{
-		$$.tabname = nullptr;
-		$$.name = $1;
-		$$.rename = nullptr;
+		$$ = new select_item_def_unit;
+		$$->tabname = nullptr;
+		$$->name = strdup($1);
+		free($1);
+		$$->rename = nullptr;
 	}
 	| ID '.' ID{
-		$$.tabname = $1;
-		$$.name = $3;
-		$$.rename = nullptr;
+		$$ = new select_item_def_unit;
+		$$->tabname = strdup($1);
+		$$->name = strdup($3);
+		free($1);
+		free($3);
+		$$->rename = nullptr;
 	}
 	| ID '.' ID AS STRING{
-		$$.tabname = $1;
-		$$.name = $3;
-		$$.rename = $5;
+		$$ = new select_item_def_unit;
+		$$->tabname = strdup($1);
+		$$->name = strdup($3);
+		$$->rename = strdup($5);
+		free($1);
+		free($3);
+		free($5);
 	}
 
-items: item { $$ = new select_item_def({$1}); }
+items: item { $$ = new select_item_def; $$->push_back(*$1); printf("%p!",$$);}
 	| items ',' item { 
 		$$ = $1;
-		$$->emplace_back($3);
+		$$->push_back(*$3);
 	}
 
 comparator:		  
@@ -243,7 +255,7 @@ comparator:
 	| '<' '=' {$$ = 5;}
 	| '<' '>' {$$ = 6;}
 	| '!' '=' {$$ = 6;}
-	| IN      {$$ = 7;}
+	| IN      {$$ = 9;}
 
 subselectsql: SELECT items_or_star FROM tables {
 		$$ = new Searcher($2, $4, nullptr);
@@ -255,15 +267,18 @@ subselectsql: SELECT items_or_star FROM tables {
 condition_item: ID {
 		$$ = new conditions_def;
 		$$->type = 3;
-		$$->strv = $1;
+		$$->strv = strdup($1);
+		free($1);
 		$$->tablev = nullptr;
 		$$->left = $$->right = nullptr;
 	}
 	| ID '.' ID{
 		$$ = new conditions_def;
 		$$->type = 3;
-		$$->strv = $3;
-		$$->tablev = $1;
+		$$->strv = strdup($3);
+		$$->tablev = strdup($1);
+		free($3);
+		free($1);
 		$$->left = $$->right = nullptr;
 	}
 	| NUMBER {
@@ -275,7 +290,8 @@ condition_item: ID {
 	| STRING {
 		$$ = new conditions_def;
 		$$->type = 2;
-		$$->strv = $1;
+		$$->strv = strdup($1);
+		free($1);
 		$$->left = $$->right = nullptr;
 	}
 	| FLOATVAL {
@@ -285,7 +301,8 @@ condition_item: ID {
 		$$->left = $$->right = nullptr;
 	}
 	| '(' subselectsql ')' {
-		$$->type = 5;
+		$$->type = 7;
+		printf("%p\n",&($$->type));
 		$$->subselect = $2;
 		$$->left = $$->right = nullptr;
 	}

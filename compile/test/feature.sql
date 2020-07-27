@@ -24,4 +24,19 @@ insert into tb (val2, val) values(4, 3) -- error: name can't be null
 insert into tb (name) values('s1') -- error: name should be unique
 insert into tb (name, val) values('s1', 10) -- error: name should be unique
 
+create table tb2(name CHAR(10), content CHAR(10))
+
+insert into tb2 values('comment', '/**/');
+insert into tb2 values('comment', '--f');;
+insert into tb2 values('id', 's1');;
+insert into tb2 values('id', 'sssss');
+
+select content from tb2 where name='comment' -- 2 items
+select * from tb where x in (select content from tb2 where name='comment'); -- field not found
+select * from tb where name in 3; -- syntax error
+select * from tb where name in (select content from tb2 where name='comment');
+select * from tb where (select content from tb2) > name -- error
+select * from tb where name in (select content from tb2);
+select * from tb where name in (select * from tb2);
+
 save
