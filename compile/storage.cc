@@ -2,6 +2,17 @@
 #include <string.h>
 #include <stdlib.h>
 
+FieldInfo::FieldInfo(const vector<FieldCellInfo> &__v):fields(__v){
+    offset.resize(fields.size());
+    offset[0]=0;
+    for (size_t i=1;i<offset.size();i++)
+        offset[i]=offset[i-1]+fields[i-1].length()+1; //+1 for NULL flag
+    length=offset[offset.size()-1]+fields.back().length() + 1;
+    int fid=0;
+    for (const auto &v:fields)
+        name2fid[v.name]=fid++;
+}
+
 void Table::loadData(FILE *fi, string _name, int _item_count){
     assert(!loaded);
     name = _name;
@@ -29,7 +40,6 @@ void Table::loadData(FILE *fi, string _name, int _item_count){
         freeData();
         throw IOException();
     }
-    
     loaded=true;
 }
 
@@ -69,15 +79,31 @@ void Table::showData(){
         vc=0;
         for (size_t j=0;j<field.fields.size();j++){
             int offset=field.offset[j];
-            if (field.fields[j].type==FieldType::int32)
+            if (readof(i,offset+field.fields[j].length()).int8()) //null
+                spaces[vc]=std::max(spaces[vc],6);
+            else if (field.fields[j].type==FieldType::int32 
+                  || field.fields[j].type==FieldType::int8)
                 spaces[vc]=std::max(spaces[vc], 
                     int(std::to_string(readof(i, offset).int32()).size()));
-            else
+            else if (field.fields[j].type==FieldType::nchar)
                 spaces[vc]=std::max(spaces[vc], int(strlen(readof(i, offset).nchar())));
+            else if (field.fields[j].type==FieldType::Float)
+                spaces[vc]=std::max(spaces[vc], 
+                    int(std::to_string(readof(i, offset).float32()).size()));
             vc++;
         }
     }
+    auto showRowBar=[&](){
+        putchar('+');
+        for (auto sn:spaces){
+            for (int i=0;i<sn;i++) 
+                putchar('-'); 
+            putchar('+');
+        }
+        puts("");
+    };
     //show
+    showRowBar();
     vc=0;
     putchar('|');
     for (size_t j=0;j<field.fields.size();j++){
@@ -86,20 +112,26 @@ void Table::showData(){
         putchar('|');
     }
     puts("");
+    showRowBar();
     for (size_t i=0;i<data.size();i++){
         vc=0;
         putchar('|');
         for (size_t j=0;j<field.fields.size();j++){
             int offset=field.offset[j];
-            if (field.fields[j].type==FieldType::int32)
+            if (readof(i,offset+field.fields[j].length()).int8()) //null
+                printf("%*s",spaces[vc], "(null)");
+            else if (field.fields[j].type==FieldType::int32 || field.fields[j].type==FieldType::int8)
                 printf("%*d",spaces[vc], readof(i, offset).int32());
-            else
+            else if (field.fields[j].type==FieldType::nchar)
                 printf("%*s",spaces[vc], readof(i, offset).nchar());
+            else if (field.fields[j].type==FieldType::Float)
+                printf("%*s",spaces[vc], std::to_string(readof(i, offset).float32()).c_str());
             putchar('|');
             vc++;
         }
         puts("");
     }
+    showRowBar();
     printf("found %zu items\n", data.size());
 }
 
@@ -135,7 +167,7 @@ bool DataBase::checkDBFile(FILE *fi, int &table_count){
  */
 FieldInfo getDBMetaFieldInfo(){
     vector<FieldCellInfo> fields;
-    fields.emplace_back(FieldType::nchar,31,"name");
+    fields.emplace_back(FieldType::nchar,31,"name", 2);
     fields.emplace_back(FieldType::int32,"count");
     fields.emplace_back(FieldType::int32,"count_field");
     return FieldInfo(fields);
@@ -144,7 +176,8 @@ FieldInfo getTableMetaFieldInfo(){
     vector<FieldCellInfo> fields;
     fields.emplace_back(FieldType::int32,"type");
     fields.emplace_back(FieldType::int32,"extra");
-    fields.emplace_back(FieldType::nchar,31,"name");
+    fields.emplace_back(FieldType::nchar,31,"name", 2);
+    fields.emplace_back(FieldType::int8,"constraint");
     return FieldInfo(fields);
 }
 
@@ -187,7 +220,8 @@ void DataBase::loadData_tables(FILE *fi, int table_count){
         for (size_t j=0;j<cur.data.size();j++)
             fields.emplace_back((FieldType)cur.read(j,"type").int32(),
                             cur.read(j,"extra").int32(), 
-                            cur.read(j,"name").nchar());
+                            cur.read(j,"name").nchar(),
+                            cur.read(j,"constraint").int8());
         tables.emplace_back(FieldInfo(fields));
         // load data
         tables.back().loadData(fi, dbmeta.read(i,"name").nchar(), 

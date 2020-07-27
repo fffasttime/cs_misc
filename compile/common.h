@@ -18,7 +18,10 @@ int printf_error(const char *fmt, ...);
 
 enum class FieldType{
 	int32,
-	nchar //char(n)
+	nchar, //char(n)
+	Float,
+	int8,
+	Null
 };
 
 

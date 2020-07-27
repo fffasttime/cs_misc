@@ -13,10 +13,11 @@
 /*%option c++*/
 
 ws [ \t]+
-string [\'].*[\']
+string [\'].*?[\']
 id [A-Za-z_][A-Za-z0-9_]*
-number [0-9]+
-comment \-\-[^\n]*
+number (\-|\+)?[0-9]+
+float (\-|\+)?[0-9]+\.[0-9]*
+comment \-\-(\s|.)*
 comment2 \/\*(\s|.)*?\*\/
 
 %%
@@ -29,16 +30,22 @@ delete {return DELETE;}
 database {return DATABASE;}
 drop   {return DROP;}
 exit   {return EXIT;}
+float  {return FLOAT;}
 from   {return FROM;}
+in	   {return IN;}
 int	   {return INT;}
 insert {return INSERT;}
 into   {return INTO;}
+not    {return NOT;}
+null   {return NULLV;}
 or     {return OR;}
 set    {return SET;}
 save   {return SAVE;}
 select {return SELECT;}
 schema {return SCHEMA;}
+show   {return SHOW;}
 table  {return TABLE;}
+unique {return UNIQUE;}
 update {return UPDATE;}
 use    {return USE;}
 values {return VALUES;}
@@ -61,6 +68,11 @@ where  {return WHERE;}
         *pc=tolower(*pc);
     return ID;
 }
+{number} {yylval.intval=atoi(yytext); return NUMBER;}
+{float} {yylval.floatval=atof(yytext); return FLOATVAL;}
+{ws}
+{comment}
+{comment2}
 {string}  {
     /*remove ''*/
     yylval.strval=(char*)malloc(yyleng-1);
@@ -68,10 +80,6 @@ where  {return WHERE;}
     yylval.strval[yyleng-2]=0;
     return STRING;
 }
-{number} {yylval.intval=atoi(yytext); return NUMBER;}
-{ws}
-{comment}
-{comment2}
 \n     {return *yytext;}
 
  /*bad character*/

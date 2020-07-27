@@ -20,7 +20,9 @@ class IOException:exception{};
 struct FieldReturn_t{
     void *p;
     int &int32(){return *(int *)p;}
+    char &int8(){return *(char *)p;}
     char *nchar(){return (char *)p;}
+    float &float32(){return *(float *)p;}
     //set a string
     void nchar(char *s){
         strcpy((char *)p, s);
@@ -31,19 +33,27 @@ struct FieldCellInfo{
     FieldType type;
     int extra; // some type have extra info
     string name;
-    int length(){
+    char constraint; // 1 NOT NULL | 2 UNIQUE
+    bool allowNULL() const {return constraint==0;}
+    int length() const{
         switch (type){
         case FieldType::int32:
             return 4;
         case FieldType::nchar:
             // '\0' need one more byte to save
             return extra + 1;
+        case FieldType::int8:
+            return 1;
+        case FieldType::Float:
+            return 4;
         default:
             fatal("fatal: error loading field type %d, the file is broken?\n", int(type));
         }
     }
     FieldCellInfo(FieldType ft, string name):type(ft),name(name){}
     FieldCellInfo(FieldType ft, int extra, string name):type(ft),extra(extra),name(name){}
+    FieldCellInfo(FieldType ft, int extra, string name, char constraint):
+        type(ft),extra(extra),name(name),constraint(constraint){}
 };
 
 struct FieldInfo{
@@ -52,16 +62,7 @@ struct FieldInfo{
     vector<FieldCellInfo> fields;
     int length;
 
-    FieldInfo(const vector<FieldCellInfo> &__v):fields(__v){
-        offset.resize(fields.size());
-        offset[0]=0;
-        for (size_t i=1;i<offset.size();i++)
-            offset[i]=offset[i-1]+fields[i-1].length();
-        length=offset.back()+fields.back().length();
-        int fid=0;
-        for (const auto &v:fields)
-            name2fid[v.name]=fid++;
-    }
+    FieldInfo(const vector<FieldCellInfo> &__v);
 };
 
 typedef char* PRecord_t;

@@ -19,6 +19,7 @@ struct create_item_def_unit{
 	FieldType type;
 	int extra;  
 	char *name;
+	char constraint;
 };
 /* CREATE TABLE table_id (create_items_def) */
 typedef vector<create_item_def_unit> create_item_def;
@@ -33,6 +34,7 @@ typedef vector<select_item_def_unit> select_item_def;
 
 union KeyValue{
 	int intval;
+	float floatval;
 	const char *strval;
 };
 
@@ -43,6 +45,7 @@ struct value_def_unit{
 };
 typedef vector<value_def_unit> value_def;
 
+class Searcher;
 /*codition binary tree node type*/
 struct conditions_def{
 	/* binary_op:0  NUMBER:1 STRING:2 id:3 */	
@@ -54,10 +57,12 @@ struct conditions_def{
 	int intv;
 	/* STRING or ID*/
 	char *strv;	
+	double floatv;
 	/* extra id */
 	char *tablev;
 	conditions_def *left;
 	conditions_def *right;
+	Searcher *subselect;
 	string to_str();
 };
 
@@ -72,6 +77,7 @@ void initDB();
 void createTable(char *name, create_item_def *crtitem);
 void dropTable(char *name);
 
+void showStmt(char *cmd, char *from);
 void createDatabase(char *name);
 void useDatabase(char *name);
 void saveDatabase();

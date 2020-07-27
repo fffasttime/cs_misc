@@ -56,7 +56,7 @@ void createTable(char *name, create_item_def *crtitem){
         return;
     }
 
-    if (strlen(name)>30){
+    if (strlen(name)>20){
         printf_error("error: table name is too long!\n");
         return;
     }
@@ -66,7 +66,7 @@ void createTable(char *name, create_item_def *crtitem){
     for (const auto &it : *crtitem){
         /* printf_debug("  field %u, type=%d, ex=%d, name=%s\n", 
             fields.size(), it.type, it.extra, it.name); */
-        fields.emplace_back(it.type, it.extra, it.name);
+        fields.emplace_back(it.type, it.extra, it.name, it.constraint);
         
         const auto &cur=fields.back();
         if (cur.name.size()>30){
@@ -99,9 +99,10 @@ void createTable(char *name, create_item_def *crtitem){
     db.updateMap();
     for (const auto &it: fields){
         values = {
-            getValDefUnit((int)it.type, FieldType::int32),        //name
-            getValDefUnit(it.extra, FieldType::int32),       //count
-            getValDefUnit(it.name.c_str(), FieldType::nchar) //count_field
+            getValDefUnit((int)it.type, FieldType::int32), 
+            getValDefUnit(it.extra, FieldType::int32),      
+            getValDefUnit(it.name.c_str(), FieldType::nchar),
+            getValDefUnit(it.constraint, FieldType::int8)
         };
         insertRecord(db.tbmeta.back().name.c_str(), &values, nullptr);
     }
@@ -134,12 +135,45 @@ void dropTable(char *name){
     db.updateMap();
 }
 
+void showStmt(char *cmd, char * from){
+    if (string(cmd)=="databases"){
+        initDB();
+    }
+    else if (string(cmd)=="columns"){
+        if (from==nullptr){
+            printf_error("syntax error, expecting FORM\n");
+            return;
+        }
+        if (!db.name_tab.count(from)){
+            printf_error("error: table '%s' does not exist\n", from);
+            return;
+        }
+        table_def tdef({string("__tbmeta_")+from});
+        selection(nullptr, &tdef, nullptr);
+    }
+    else if (string(cmd)=="tables"){
+        table_def tdef({"__dbmeta"});
+        selection(nullptr, &tdef, nullptr);
+    }
+    else{
+        printf_error("syntax error, unexpected ID, expecting TABLES, DATABASES or COLUMNS\n");
+    }
+}
+
 /**
  * Check weather a value matchs its field when insert or update
  * TODO: UNIQUE/PRIMARKEY/... check
  */
 bool checkValueField(const value_def_unit &v, const FieldCellInfo &f){
-    if (v.type!=f.type){
+    if (v.type==FieldType::Null && !f.allowNULL()){
+        printf_error("error: field '%s' can't be NULL\n", f.name.c_str());
+        return false;
+    }
+    if (f.type==FieldType::Float && v.type==FieldType::nchar){
+        printf_error("error: type mismatch on '%s'\n", f.name.c_str());
+        return false;
+    }
+    if (f.type==FieldType::nchar && v.type!=FieldType::nchar){
         printf_error("error: type mismatch on '%s'\n", f.name.c_str());
         return false;
     }
@@ -148,6 +182,7 @@ bool checkValueField(const value_def_unit &v, const FieldCellInfo &f){
         if (len>f.extra){
             printf_error("error: field '%s' is CHAR(%d), but input string has %d characters\n",
                 f.name.c_str(), f.extra, len);
+            return false;
         }
     }
     return true;
@@ -155,15 +190,53 @@ bool checkValueField(const value_def_unit &v, const FieldCellInfo &f){
 
 void writeValueField(PRecord_t p, int pos, const Table& tb, const value_def_unit &v){
     auto p1=(void *)(p+tb.field.offset[pos]);
+    if (v.type==FieldType::Null){
+        *((char *)p1+tb.field.fields[pos].length())=1;
+        return;
+    }
     switch (tb.field.fields[pos].type)
     {
     case FieldType::int32:
         *(int *)p1 = v.value.intval;
         break;
+    case FieldType::int8:
+        *(char *)p1 = v.value.intval;
+        break;
     case FieldType::nchar:
         strcpy((char *)p1, v.value.strval);
         break;
+    case FieldType::Float:{
+        *(float *)p1 = (float)(v.type==FieldType::Float ? v.value.floatval:v.value.intval);
+        break;
     }
+    default:
+        fatal("fatal: internal error in writeValueField(), type=%d\n",
+            (int)tb.field.fields[pos].type);
+    }
+}
+
+bool checkUnique(int pos, Table &tb, const value_def_unit &v){
+    if ((tb.field.fields[pos].constraint&2)==0) // allow
+        return true;
+    int offset=tb.field.offset[pos];
+    FieldCellInfo &f=tb.field.fields[pos];
+    if (f.type==FieldType::int32){
+        int y=v.value.intval;
+        for (size_t i=0;i<tb.data.size();i++){
+            if (tb.readof(i, offset).int32()==y){
+                printf_error("error: field '%s' should be UNIQUE\n", f.name.c_str());
+                return false;
+            }
+        }
+    }
+    else if (f.type==FieldType::nchar){
+        for (size_t i=0;i<tb.data.size();i++)
+            if (strcmp(tb.readof(i, offset).nchar(),v.value.strval)==0){
+                printf_error("error: field '%s' should be UNIQUE\n", f.name.c_str());
+                return false;
+            }
+    }
+    return true;
 }
 
 /**
@@ -176,6 +249,9 @@ int insertRecord(const char *name, value_def *val, select_item_def *selitem, boo
     }
     Table &tb=*db.name_tab[name];
     auto &fields = tb.field.fields;
+    value_def_unit nullunit;
+    nullunit.type=FieldType::Null;
+
     if (nocheck) goto next;
     // check fields
     if (selitem==nullptr){
@@ -187,6 +263,8 @@ int insertRecord(const char *name, value_def *val, select_item_def *selitem, boo
         for (size_t i=0;i<val->size();i++){
             if (!checkValueField((*val)[i], fields[i]))
                 return 1;
+            if (!checkUnique(i, tb, (*val)[i]))
+                return 1;
         }
     }
     else{
@@ -194,6 +272,7 @@ int insertRecord(const char *name, value_def *val, select_item_def *selitem, boo
             printf("error: number mismatch, %zu values but %zu fields\n",
                 val->size(), selitem->size());
         }
+        vector<bool> vis(tb.field.fields.size(), false);
         for (size_t i=0;i<selitem->size();i++){
             auto it=tb.field.name2fid.find((*selitem)[i].name);
             if (it==tb.field.name2fid.end()){
@@ -202,7 +281,15 @@ int insertRecord(const char *name, value_def *val, select_item_def *selitem, boo
             }
             if (!checkValueField((*val)[i], fields[it->second]))
                 return 1;
+            if (!checkUnique(it->second, tb, (*val)[i]))
+                return 1;
+            vis[it->second]=true;
         }
+        // check null
+        for (size_t i=0;i<vis.size();i++)
+            if(vis[i]==false)
+                if (!checkValueField(nullunit,fields[i]))
+                    return 1;
     }
     next:
     //generate record
@@ -216,8 +303,16 @@ int insertRecord(const char *name, value_def *val, select_item_def *selitem, boo
             writeValueField(record, i, tb, (*val)[i]);
     }
     else{
-        for (size_t i=0;i<selitem->size();i++)
-            writeValueField(record, tb.field.name2fid[(*selitem)[i].name], tb, (*val)[i]);
+        vector<bool> vis(tb.field.fields.size(), false);
+        for (size_t i=0;i<selitem->size();i++){
+            int fid=tb.field.name2fid[(*selitem)[i].name];
+            writeValueField(record, fid, tb, (*val)[i]);
+            vis[fid]=true;
+        }
+        // check null
+        for (size_t i=0;i<vis.size();i++)
+            if(vis[i]==false)
+                writeValueField(record, i, tb, nullunit);
     }
     tb.data.push_back(record);
     return 0;
@@ -279,6 +374,9 @@ string conditions_def::to_str(){
     }
     else if (type == 2){
         return string("'")+strv+"'";
+    }
+    else if (type == 4){
+        return std::to_string(floatv);
     }
     else{
         if (tablev!=nullptr)
@@ -362,7 +460,7 @@ Table *Searcher::doProjection(){
                 memcpy(line+tab.field.offset[i], 
                 tabs[fids[i].first]->data[it[fids[i].first]]+
                     tabs[fids[i].first]->field.offset[fids[i].second],
-                tab.field.fields[i].length());
+                tab.field.fields[i].length()+1);
             tab.data.push_back(line);
         }
         return result_table;
@@ -373,6 +471,19 @@ Table *Searcher::doProjection(){
 }
 
 bool compareint(int x, int y, int cmp_op){
+    switch (cmp_op)
+    {
+    case 1: return x==y;
+    case 2: return x>y;
+    case 3: return x<y;
+    case 4: return x>=y;
+    case 5: return x<=y;
+    case 6: return x!=y;
+    default: ;
+    }
+    fatal("?\n");
+}
+bool comparefloat(float x, float y, int cmp_op){
     switch (cmp_op)
     {
     case 1: return x==y;
@@ -410,6 +521,7 @@ ItemSet Searcher::search(conditions_def *con_root){
 }
 
 ItemSet Searcher::CompareTable0(conditions_def *left, conditions_def *right, int cmp_op){
+    /** TODO:finish compare */
     if (left->type==1 || right->type==1){
         int lx=left->type==1?left->intv:atoi(left->strv);
         int rx=right->type==1?right->intv:atoi(right->strv);
@@ -462,9 +574,21 @@ ItemSet Searcher::CompareTable1(conditions_def *left, conditions_def *right, int
     // TODO : optimize, add type check
     //enum
     for (size_t i=0;i<tab.data.size();i++){
-        if(field.type==FieldType::int32){
-            int x=tab.readof(i, offset).int32();
-            if (compareint(x,right->intv,cmp_op)){
+        if(field.type==FieldType::int32 || field.type==FieldType::Float){
+            float x;
+            if (field.type==FieldType::int32) x=tab.readof(i, offset).int32();
+            else x=tab.readof(i, offset).float32();
+            tab.readof(i, offset).int32();
+            float y;
+            if (right->type==1)
+                y=right->intv;
+            else if (right->type==4)
+                y=right->floatv;
+            else{
+                printf("error: compare type mismatch\n");
+                throw CommandException();
+            }
+            if (comparefloat(x, y,cmp_op)){
                 auto ins=ItemTuple_True;
                 ins[tid]=i;
                 result.emplace_back(std::move(ins));
@@ -492,18 +616,27 @@ ItemSet Searcher::CompareTable2(conditions_def *left, conditions_def *right, int
     auto id2=findFieldName(right->strv, right->tablev);
     int tid2=id2.first;
     Table &tab2=*tabs[tid2];
-    //auto &field2=tab2.field.fields[id2.second];
+    auto &field2=tab2.field.fields[id2.second];
     int offset2=tab2.field.offset[id2.second];
 
     ItemSet result;
     // TODO : optimize, add type check
     //enum
     for (size_t i=0;i<tab1.data.size();i++){
-        if(field1.type==FieldType::int32){
-            int x=tab1.readof(i, offset1).int32();
+        if(field1.type==FieldType::int32 || field1.type==FieldType::Float){
+            float x;
+            if (field1.type==FieldType::int32) x=tab1.readof(i, offset1).int32();
+            else x=tab1.readof(i, offset1).float32();
+
             for (size_t j=0;j<tab2.data.size();j++){
-                int y=tab2.readof(j, offset2).int32();
-                if (compareint(x,y,cmp_op)){
+                float y;
+                if (field2.type==FieldType::int32) y=tab2.readof(i, offset2).int32();
+                else if (field2.type==FieldType::Float) y=tab2.readof(i, offset2).float32();
+                else{
+                    printf("error: compare type mismatch\n");
+                    throw CommandException();
+                }
+                if (comparefloat(x,y,cmp_op)){
                     auto ins=ItemTuple_True;
                     ins[tid1]=i;
                     ins[tid2]=j;
@@ -512,6 +645,10 @@ ItemSet Searcher::CompareTable2(conditions_def *left, conditions_def *right, int
             }
         }
         else{
+            if (field2.type!=FieldType::nchar){
+                printf("error: compare type mismatch\n");
+                throw CommandException();
+            }
             char *x=tab1.readof(i, offset1).nchar();
             for (size_t j=0;j<tab2.data.size();j++){
                 char *y=tab2.readof(j, offset2).nchar();

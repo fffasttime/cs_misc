@@ -28,6 +28,7 @@ int main(int argc, char **argv){
 %union{
 	int intval;
 	char *strval;
+	double floatval;
 	create_item_def *crtitemval;
 	create_item_def_unit crtitemvalu;
 	select_item_def *selitemval;
@@ -36,25 +37,28 @@ int main(int argc, char **argv){
 	value_def_unit valdefu;
 	conditions_def *conval;
 	table_def *tbval;
+	Searcher *subselectsqlp;
 }
 
 %error-verbose
 
-%token AND AS CREATE CHAR DATABASE DELETE DROP EXIT FROM INSERT 
-%token INT INTO SAVE SET SCHEMA SELECT TABLE USE UPDATE VALUES WHERE
+%token AND AS CREATE CHAR DATABASE DELETE DROP FLOAT EXIT FROM INSERT IN INT INTO 
+%token NOT NULLV SAVE SET SCHEMA SELECT SHOW TABLE UNIQUE UPDATE USE VALUES WHERE
+%token <floatval> FLOATVAL
 %token <intval> NUMBER
 %token <strval> STRING ID
 
 /* binding content */
-%type <intval> comparator
+%type <intval> comparator constraint
 %type <crtitemvalu> create_item
 %type <crtitemval> create_items
 %type <conval> condition conditions condition_item
-%type <selitemval> items
+%type <selitemval> items items_or_star
 %type <selitenvalu> item
 %type <tbval> tables
 %type <valdefu> value
 %type <valdef> value_list
+%type <subselectsqlp> subselectsql
 
 %left OR
 %left AND
@@ -70,7 +74,7 @@ statementline: statement ';'
 			}
 
 statement: createsql | selectsql | exitsql | insertsql | dropsql | deletesql | updatesql
-	| usestmt | savestmt | %empty 
+	| usestmt | savestmt | showstmt | %empty 
 
 usestmt: USE ID {
 		useDatabase($2);
@@ -79,19 +83,22 @@ savestmt: SAVE{
 		saveDatabase();
 	}
 
-selectsql: SELECT '*' FROM tables {
-		selection(nullptr, $4, nullptr);
+showstmt: SHOW ID{
+		showStmt($2, nullptr);
 	}
-	| SELECT items FROM tables {
+	| SHOW ID FROM ID{
+		showStmt($2, $4);
+	}
+
+selectsql: SELECT items_or_star FROM tables {
 		selection($2, $4, nullptr);
 	}
-	| SELECT '*' FROM tables WHERE conditions {
-		selection(nullptr, $4, $6);
-	}
-	| SELECT items FROM tables WHERE conditions {
+	| SELECT items_or_star FROM tables WHERE conditions {
 		selection($2, $4, $6);
 	}
 
+items_or_star: items { $$ = $1; }
+	| '*' {$$ = nullptr; }
 
 exitsql: EXIT {
 		exitSql();
@@ -108,14 +115,31 @@ createsql: CREATE TABLE ID '(' create_items ')' {
 		createDatabase($3);
 	}
 
-create_item: ID INT {
+constraint: %empty{
+		$$=0;
+	}
+	| NOT NULLV{
+		$$=1;
+	}
+	| UNIQUE{
+		$$=2;
+	}
+
+create_item: ID INT constraint{
 		$$.name=$1;
 		$$.type=FieldType::int32;
+		$$.constraint=$3;
 	}
-	| ID CHAR '(' NUMBER ')' {
+	| ID CHAR '(' NUMBER ')' constraint{
 		$$.name=$1;
 		$$.type=FieldType::nchar;
 		$$.extra=$4;
+		$$.constraint=$6;
+	}
+	| ID FLOAT constraint{
+		$$.name=$1;
+		$$.type=FieldType::Float;
+		$$.constraint=$3;
 	}
 
 create_items: create_item { 
@@ -165,6 +189,13 @@ value: NUMBER {
 		$$.value.strval = $1;
 		$$.type = FieldType::nchar;
 	}
+	| FLOATVAL {
+		$$.value.floatval = $1;
+		$$.type = FieldType::Float;
+	}
+	| NULLV {
+		$$.type = FieldType::Null;
+	}
 
 value_list: value { 
 		$$ = new value_def({$1});
@@ -212,6 +243,14 @@ comparator:
 	| '<' '=' {$$ = 5;}
 	| '<' '>' {$$ = 6;}
 	| '!' '=' {$$ = 6;}
+	| IN      {$$ = 7;}
+
+subselectsql: SELECT items_or_star FROM tables {
+		$$ = new Searcher($2, $4, nullptr);
+	}
+	| SELECT items_or_star FROM tables WHERE conditions {
+		$$ = new Searcher($2, $4, $6);
+	}
 
 condition_item: ID {
 		$$ = new conditions_def;
@@ -239,9 +278,20 @@ condition_item: ID {
 		$$->strv = $1;
 		$$->left = $$->right = nullptr;
 	}
+	| FLOATVAL {
+		$$ = new conditions_def;
+		$$->type = 4;
+		$$->floatv = $1;
+		$$->left = $$->right = nullptr;
+	}
+	| '(' subselectsql ')' {
+		$$->type = 5;
+		$$->subselect = $2;
+		$$->left = $$->right = nullptr;
+	}
 
-condition: condition_item { $$ = $1; }
-	| condition comparator condition_item {
+condition: 
+	condition_item comparator condition_item {
 		$$ = new conditions_def;
 		$$->type = 0;
 		$$->intv = $2;
